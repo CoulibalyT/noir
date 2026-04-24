@@ -1,5 +1,5 @@
 import './style.css'
-import { Box3, Color, DefaultLoadingManager, Vector3 } from 'three'
+import { Color, DefaultLoadingManager, Vector3 } from 'three'
 import { Timer } from 'three/examples/jsm/misc/Timer.js'
 import type { FogExp2 } from 'three'
 import { gsap } from 'gsap'
@@ -148,70 +148,6 @@ void mannequinsPromise.then((entries) => {
 
 const timer = new Timer()
 
-const debugHud = document.getElementById('debug-hud')
-let debugAcc = 0
-function updateDebugHud(): void {
-  if (!debugHud) return
-  debugAcc++
-  if (debugAcc % 6 !== 0) return
-  const cam = cameraRig.camera
-  const s = cameraRig.scrollState
-  const m = mannequins[s.currentLook]
-  const ml = m
-    ? `(${m.group.position.x.toFixed(1)}, ${m.group.position.y.toFixed(1)}, ${m.group.position.z.toFixed(1)})`
-    : '—'
-  const visible = mannequins.map((x) => (x.group.visible ? '1' : '0')).join('')
-  let meshCount = 0
-  let visibleMeshes = 0
-  let firstMatOpacity = '—'
-  let firstMatColor = '—'
-  let firstMatTransparent = '—'
-  let firstMatType = '—'
-  let firstMatName = '—'
-  if (m) {
-    m.group.traverse((obj) => {
-      const me = obj as import('three').Mesh
-      if (me.isMesh) {
-        meshCount++
-        if (me.visible) visibleMeshes++
-        if (meshCount === 1) {
-          const mat = Array.isArray(me.material) ? me.material[0] : me.material
-          if (mat) {
-            const std = mat as import('three').MeshStandardMaterial
-            firstMatType = mat.type
-            firstMatName = mat.name || '(no name)'
-            firstMatOpacity = String(std.opacity ?? 'n/a')
-            firstMatTransparent = String(std.transparent ?? false)
-            firstMatColor = std.color
-              ? '#' + std.color.getHexString()
-              : '—'
-          }
-        }
-      }
-    })
-  }
-  debugHud.textContent = [
-    `look      ${s.currentLook + 1}/${mannequins.length || '?'}  (local ${s.localProgress.toFixed(3)})`,
-    `cam pos   (${cam.position.x.toFixed(1)}, ${cam.position.y.toFixed(1)}, ${cam.position.z.toFixed(1)})`,
-    `mann pos  ${ml}`,
-    `mann bbox ${m ? bboxSummary(m.group) : '—'}`,
-    `visible   ${visible}`,
-    `meshes    ${meshCount}  (visible ${visibleMeshes})`,
-    `mat[0]    ${firstMatType}`,
-    `  name    ${firstMatName}`,
-    `  color   ${firstMatColor}`,
-    `  opacity ${firstMatOpacity}`,
-    `  trans   ${firstMatTransparent}`,
-  ].join('\n')
-}
-
-const bboxTmp = new Box3()
-const bboxSize = new Vector3()
-function bboxSummary(obj: import('three').Object3D): string {
-  bboxTmp.setFromObject(obj)
-  bboxTmp.getSize(bboxSize)
-  return `${bboxSize.x.toFixed(1)}×${bboxSize.y.toFixed(1)}×${bboxSize.z.toFixed(1)}`
-}
 let prevLook = -1
 let audienceFlashTimer = 0
 
@@ -618,8 +554,6 @@ function frame(): void {
   if (state.progress > 0.02) lookUI.hideScrollHint()
 
   audio.update(state.walkPhase)
-
-  updateDebugHud()
 
   if (finaleEngaged) {
     const blend = smoothstep(0, FINALE_SLIDE_END, state.finaleProgress)

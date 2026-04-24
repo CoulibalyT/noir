@@ -657,23 +657,6 @@ canvas { display: block; }
   transition: width 0.1s linear;
 }
 
-.debug-hud {
-  position: fixed;
-  top: 90px;
-  left: 20px;
-  z-index: 50;
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-  font-size: 0.6rem;
-  line-height: 1.5;
-  color: #c9b99a;
-  background: rgba(0, 0, 0, 0.55);
-  padding: 8px 10px;
-  border-left: 1px solid var(--color-accent);
-  pointer-events: none;
-  white-space: pre;
-  letter-spacing: 0.02em;
-  max-width: 320px;
-}
 
 .audio-toggle {
   position: fixed;
