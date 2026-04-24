@@ -1188,3 +1188,93 @@ a.finale-credit-meta:hover {
     letter-spacing: 0.22em;
   }
 }
+
+.mobile-block {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: var(--color-bg);
+  color: var(--color-text);
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1.6rem;
+  overflow: hidden;
+}
+@media (pointer: coarse), (max-width: 900px) {
+  .mobile-block {
+    display: flex;
+  }
+  body > :not(.mobile-block) {
+    display: none !important;
+  }
+}
+.mobile-block-inner {
+  max-width: 420px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.4rem;
+  animation: mobileBlockIn 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+.mobile-block-stamp {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.mobile-block-line {
+  width: 28px;
+  height: 1px;
+  background: var(--color-accent);
+}
+.mobile-block-label {
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.58rem;
+  letter-spacing: 0.45em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+.mobile-block-title {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-style: italic;
+  font-size: clamp(2.4rem, 15vw, 4.2rem);
+  line-height: 0.95;
+  letter-spacing: 0.04em;
+  color: var(--color-text);
+}
+.mobile-block-title-a { margin-right: 0.2em; }
+.mobile-block-headline {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-style: italic;
+  font-size: clamp(1.05rem, 5vw, 1.4rem);
+  line-height: 1.35;
+  color: var(--color-text);
+  max-width: 18ch;
+  margin-top: 0.4rem;
+}
+.mobile-block-body {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  letter-spacing: 0.05em;
+  color: rgba(232, 228, 223, 0.78);
+  margin: 0;
+}
+.mobile-block-footer {
+  margin-top: 0.8rem;
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.55rem;
+  letter-spacing: 0.55em;
+  text-transform: uppercase;
+  color: rgba(232, 228, 223, 0.4);
+}
+@keyframes mobileBlockIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}

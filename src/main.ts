@@ -43,6 +43,11 @@ const paintStaticI18n = (): void => {
 paintStaticI18n()
 i18n.onChange(() => paintStaticI18n())
 
+const isMobileBlocked = window.matchMedia('(pointer: coarse), (max-width: 900px)').matches
+if (isMobileBlocked) {
+  throw new Error('mobile-blocked')
+}
+
 const intro = createIntro()
 
 DefaultLoadingManager.onProgress = (_url, loaded, total) => {
@@ -138,6 +143,8 @@ void mannequinsPromise.then((entries) => {
     m.group.position.set(0, 0, subjectZForLook(i))
     m.group.visible = i === 0
   })
+
+  runway.renderer.compile(runway.scene, cameraRig.camera)
 
   const firstPins = LOOKS[0].pins
   if (firstPins && entries[0]) pinLayer.setPins(firstPins, entries[0].group)

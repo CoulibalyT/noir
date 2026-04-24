@@ -54,6 +54,23 @@ const DICT = {
     fr: 'Basculer en anglais',
     en: 'Switch to French',
   },
+
+  'mobile.stamp': {
+    fr: 'Expérience desktop',
+    en: 'Desktop experience',
+  },
+  'mobile.title': {
+    fr: 'Ce défilé se vit sur grand écran',
+    en: 'This runway is made for a bigger screen',
+  },
+  'mobile.body': {
+    fr: 'Le rendu 3D, les détails de couture et le travelling du finale demandent la puissance et la largeur d’un ordinateur. Retrouvez-nous sur desktop.',
+    en: 'The 3D rendering, fabric detail and finale travelling require the horsepower and width of a desktop. See us on a computer.',
+  },
+  'mobile.footer': {
+    fr: 'Nøir Haus · Paris · AW 26',
+    en: 'Nøir Haus · Paris · AW 26',
+  },
 } as const
 
 export type StringKey = keyof typeof DICT
