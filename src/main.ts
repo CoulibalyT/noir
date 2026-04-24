@@ -25,9 +25,26 @@ import { createBackdrop } from './scene/backdrop'
 import { createPinLayer } from './ui/pins'
 import { createAudio } from './audio/audio'
 import { LOOKS } from './data/looks'
+import { createI18n, type StringKey } from './i18n'
 
 const container = document.getElementById('canvas-container')
 if (!container) throw new Error('#canvas-container not found')
+
+// Language layer first — subsequent UI constructors read from it, and the
+// static HTML data-i18n nodes need an initial paint before anything else
+// renders so no French default flashes for visitors loading in English.
+const i18n = createI18n()
+
+const paintStaticI18n = (): void => {
+  document
+    .querySelectorAll<HTMLElement>('[data-i18n]')
+    .forEach((el) => {
+      const key = el.getAttribute('data-i18n') as StringKey | null
+      if (key) el.textContent = i18n.t(key)
+    })
+}
+paintStaticI18n()
+i18n.onChange(() => paintStaticI18n())
 
 // Intro first — needs to exist before any loader fires so progress callbacks
 // have somewhere to write to.
@@ -65,22 +82,20 @@ const postfx = createPostFX(runway.renderer, runway.scene, cameraRig.camera, {
   chromatic: quality.postFxChromatic && feature('chromatic'),
   vignette: quality.postFxVignette && feature('vignette'),
   noise: quality.postFxNoise && feature('noise'),
-  // Anamorphic streaks need a separable multi-pass blur to look smooth;
-  // the single-pass approximation produces visible "dashes" on bright
-  // specular peaks. Disabled by default; opt in via ?on=anamorphic for
-  // experimentation. Color grading is a clean per-pixel transform so it
-  // stays on.
+  // Anamorphic pass (scene/anamorphic.ts) produces a black screen in the
+  // current composer setup — investigating. Opt-in only via ?on=anamorphic.
   anamorphic: quality.postFxBloom && feature('anamorphic', false),
   colorGrade: feature('grade'),
 })
 const cursor = createCursor()
-const lookUI = createLookUI()
-const creditsUI = createCreditsUI()
+const lookUI = createLookUI(i18n)
+const creditsUI = createCreditsUI(i18n)
 const poster = createPoster({
   renderOnce: () => postfx.render(0),
   readCanvas: () => runway.renderer.domElement,
+  i18n,
 })
-const finale = createFinale(() => {
+const finale = createFinale(i18n, () => {
   // Replay — exit the curtain call, restore mannequins + backdrop, then
   // smoothly scroll back to the top. The scroll-driven rig picks up from
   // there on the next frame.
@@ -88,17 +103,48 @@ const finale = createFinale(() => {
   resetFinaleState()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 })
-const pinLayer = createPinLayer(document.body)
+const pinLayer = createPinLayer(document.body, i18n)
 const audio = createAudio()
 
 // Wire audio toggle button
 const audioToggleEl = document.getElementById('audio-toggle') as HTMLButtonElement
 const audioStateEl = document.getElementById('audio-toggle-state') as HTMLElement
-audioToggleEl.addEventListener('click', () => {
-  const nowMuted = audio.toggle()
-  audioStateEl.textContent = nowMuted ? 'off' : 'on'
+const refreshAudioAria = (nowMuted: boolean): void => {
+  audioToggleEl.setAttribute(
+    'aria-label',
+    i18n.t(nowMuted ? 'audio.ariaOff' : 'audio.ariaOn'),
+  )
+  audioStateEl.textContent = nowMuted ? i18n.t('audio.off') : i18n.t('audio.on')
   audioToggleEl.dataset.on = nowMuted ? 'false' : 'true'
-  audioToggleEl.setAttribute('aria-label', nowMuted ? 'Activer le son' : 'Couper le son')
+}
+// Initial paint — audio starts muted.
+refreshAudioAria(true)
+audioToggleEl.addEventListener('click', () => {
+  refreshAudioAria(audio.toggle())
+})
+
+// Wire language toggle button
+const langToggleEl = document.getElementById('lang-toggle') as HTMLButtonElement
+const langCurrentEl = document.getElementById('lang-toggle-current') as HTMLElement
+const langOtherEl = document.getElementById('lang-toggle-other') as HTMLElement
+const refreshLangToggle = (): void => {
+  const cur = i18n.get()
+  langCurrentEl.textContent = cur.toUpperCase()
+  langOtherEl.textContent = cur === 'fr' ? 'EN' : 'FR'
+  langToggleEl.setAttribute('aria-label', i18n.t('lang.ariaSwitch'))
+}
+refreshLangToggle()
+langToggleEl.addEventListener('click', () => {
+  i18n.toggle()
+})
+// Centralised re-render — the toggle only flips the lang, every UI piece
+// subscribes here so they repaint in lockstep.
+i18n.onChange(() => {
+  refreshLangToggle()
+  refreshAudioAria(audioToggleEl.dataset.on !== 'true')
+  lookUI.repaint()
+  pinLayer.repaint()
+  finale.repaint()
 })
 
 let mannequins: MannequinEntry[] = []

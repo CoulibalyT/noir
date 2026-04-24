@@ -1,5 +1,6 @@
 import credits from '../data/credits.json'
 import type { Look } from '../data/looks'
+import type { I18n } from '../i18n'
 
 interface CreditEntry {
   creator: string | null
@@ -25,7 +26,7 @@ export interface CreditsUI {
   hideMarquee: () => void
 }
 
-export function createCreditsUI(): CreditsUI {
+export function createCreditsUI(i18n: I18n): CreditsUI {
   const marqueeEl = document.getElementById('credits-marquee') as HTMLElement
   const marqueeTitleEl = document.getElementById('credits-marquee-title') as HTMLElement
   const marqueeMetaEl = document.getElementById('credits-marquee-meta') as HTMLElement
@@ -41,8 +42,9 @@ export function createCreditsUI(): CreditsUI {
     const c = creditsMap[look.id]
     // Title falls back to the look name so the marquee never reads as empty —
     // credits are progressively filled, we shouldn't wait for the json to be
-    // complete before the editorial layer kicks in.
-    const title = c?.title ?? look.name
+    // complete before the editorial layer kicks in. Credits titles (asset
+    // names) stay as the creator set them; look names are localized.
+    const title = c?.title ?? i18n.localize(look.name)
     const creator = c?.creator ?? null
     const platform = c?.platform ?? null
     marqueeTitleEl.textContent = title
@@ -77,7 +79,7 @@ export function createCreditsUI(): CreditsUI {
       cartelEl.classList.remove('visible')
       return
     }
-    cartelTitleEl.textContent = c.title ?? look.name
+    cartelTitleEl.textContent = c.title ?? i18n.localize(look.name)
     cartelCreatorEl.textContent = c.creator
     const linkHref = c.sourceAsset ?? c.portfolio
     if (linkHref) {

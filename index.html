@@ -23,21 +23,21 @@
   </head>
   <body>
     <div class="intro-overlay" id="intro">
-      <div class="intro-corner intro-corner--tl" data-intro-reveal>N° 01 — DÉFILÉ</div>
+      <div class="intro-corner intro-corner--tl" data-intro-reveal data-i18n="intro.corner.tl"></div>
       <div class="intro-corner intro-corner--tr" data-intro-reveal>AW 26</div>
 
       <div class="intro-center">
         <div class="intro-title" id="intro-title">NØIR HAUS</div>
         <div class="intro-banner">
           <span class="intro-banner-line"></span>
-          <span class="intro-banner-label" data-intro-reveal>Défilé</span>
+          <span class="intro-banner-label" data-intro-reveal data-i18n="intro.defile"></span>
           <span class="intro-banner-line"></span>
         </div>
-        <div class="intro-season" id="intro-season">Automne — Hiver 2026</div>
+        <div class="intro-season" id="intro-season" data-i18n="intro.season"></div>
       </div>
 
-      <div class="intro-corner intro-corner--bl" data-intro-reveal>Paris / 24.04.2026</div>
-      <div class="intro-corner intro-corner--br" data-intro-reveal>4 regards</div>
+      <div class="intro-corner intro-corner--bl" data-intro-reveal data-i18n="intro.corner.bl"></div>
+      <div class="intro-corner intro-corner--br" data-intro-reveal data-i18n="intro.corner.br"></div>
 
       <div class="intro-progress-wrap" id="intro-progress">
         <div class="intro-progress-rail">
@@ -58,10 +58,10 @@
 
     <header class="overlay brand">
       <h1>Nøir Haus</h1>
-      <div class="subtitle">Automne — Hiver 2026</div>
+      <div class="subtitle" data-i18n="brand.subtitle"></div>
     </header>
 
-    <div class="overlay season-tag">AW26 — PARIS</div>
+    <div class="overlay season-tag" data-i18n="seasonTag"></div>
 
     <div class="overlay look-counter">
       <div class="current" id="look-num">01</div>
@@ -81,7 +81,7 @@
 
     <div class="credits-cartel" id="credits-cartel" aria-hidden="true">
       <div class="credits-cartel-inner">
-        <div class="credits-cartel-label">Couture</div>
+        <div class="credits-cartel-label" data-i18n="cartel.label"></div>
         <div class="credits-cartel-title" id="credits-cartel-title"></div>
         <div class="credits-cartel-creator" id="credits-cartel-creator"></div>
         <a
@@ -94,13 +94,19 @@
     </div>
 
     <div class="overlay scroll-hint" id="scroll-hint">
-      <span>Glissez pour entrer</span>
+      <span data-i18n="scrollHint"></span>
       <div class="scroll-line"></div>
     </div>
 
-    <button id="audio-toggle" class="audio-toggle" aria-label="Activer le son" type="button">
-      <span class="audio-toggle-label">Son</span>
+    <button id="audio-toggle" class="audio-toggle" type="button">
+      <span class="audio-toggle-label" data-i18n="audio.label"></span>
       <span class="audio-toggle-state" id="audio-toggle-state">off</span>
+    </button>
+
+    <button id="lang-toggle" class="lang-toggle" type="button">
+      <span class="lang-toggle-current" id="lang-toggle-current">FR</span>
+      <span class="lang-toggle-sep">/</span>
+      <span class="lang-toggle-other" id="lang-toggle-other">EN</span>
     </button>
 
     <div id="debug-hud" class="debug-hud"></div>

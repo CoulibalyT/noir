@@ -13,7 +13,7 @@ import {
   SphereGeometry,
   Vector3,
 } from 'three'
-import type { Material, SkinnedMesh } from 'three'
+import type { Material } from 'three'
 import type { AnimationClip, Object3D } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'

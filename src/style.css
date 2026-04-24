@@ -739,8 +739,49 @@ canvas { display: block; }
   color: var(--color-text);
 }
 
+/* Language switcher — sits to the LEFT of the audio button (same y axis,
+   same aesthetic) so the header's right edge reads as a matching pair. */
+.lang-toggle {
+  position: fixed;
+  top: 40px;
+  right: 188px;
+  z-index: 30;
+  background: transparent;
+  border: 1px solid var(--color-muted);
+  padding: 10px 14px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.55rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  cursor: none;
+  pointer-events: auto;
+  opacity: 0;
+  animation: fadeIn 2s ease 2s forwards;
+  transition: border-color 0.3s ease, color 0.3s ease;
+}
+.lang-toggle:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.lang-toggle-current {
+  color: var(--color-accent);
+  font-weight: 400;
+}
+.lang-toggle-sep {
+  opacity: 0.4;
+}
+.lang-toggle-other {
+  opacity: 0.6;
+}
+
 @media (pointer: coarse) {
   .audio-toggle { cursor: pointer; }
+  .lang-toggle { cursor: pointer; }
 }
 
 @keyframes fadeIn {
@@ -794,6 +835,13 @@ canvas { display: block; }
   .audio-toggle {
     top: 20px;
     right: 20px;
+    padding: 8px 10px;
+    font-size: 0.45rem;
+    letter-spacing: 0.3em;
+  }
+  .lang-toggle {
+    top: 20px;
+    right: 130px;
     padding: 8px 10px;
     font-size: 0.45rem;
     letter-spacing: 0.3em;
@@ -947,6 +995,51 @@ canvas { display: block; }
 a.finale-credit-meta:hover {
   color: var(--color-text);
   letter-spacing: 0.42em;
+}
+/* Submit block — editorial invitation for creators to send in their own
+   work. Bordered frame so it reads as a distinct "call" inside the finale,
+   not a sibling credit row. */
+.finale-submit {
+  margin-top: 2.2rem;
+  padding: 1.6rem 1.8rem;
+  border: 1px solid rgba(201, 185, 154, 0.35);
+  max-width: 520px;
+  text-align: center;
+}
+.finale-submit-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 1.5rem;
+  letter-spacing: 0.02em;
+  color: var(--color-accent);
+  margin-bottom: 0.7rem;
+}
+.finale-submit-body {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  letter-spacing: 0.05em;
+  color: rgba(232, 228, 223, 0.78);
+  margin: 0 0 1.2rem;
+}
+.finale-submit-cta {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 0.62rem;
+  letter-spacing: 0.55em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 4px;
+  text-decoration: none;
+  transition: color 0.3s ease, letter-spacing 0.3s ease;
+}
+.finale-submit-cta:hover {
+  color: var(--color-text);
+  letter-spacing: 0.62em;
 }
 .finale-cta {
   margin-top: 0.5rem;

@@ -12,6 +12,7 @@ import {
   RenderPass,
   VignetteEffect,
 } from 'postprocessing'
+import { AnamorphicPass } from './anamorphic'
 
 // Custom Effect — screen-space noise dissolve with accent-colored edge glow.
 // threshold 0 = fully visible, 1 = fully dissolved to black. GSAP tweens this
@@ -66,51 +67,6 @@ export class DissolveEffect extends Effect {
 
   get threshold(): Uniform<number> {
     return this.uniforms.get('threshold') as Uniform<number>
-  }
-}
-
-// Anamorphic bloom — horizontal streaks on bright pixels. Signature of
-// anamorphic cinema lenses. Sample count is high and step size small so
-// neighbouring taps overlap — otherwise each tap ends up as a visible
-// bright dot (the "dashed line" artifact on skin/satin specular peaks).
-// Threshold stays aggressive so only real hot spots (spot hotspots, camera
-// flash, metal buckles) contribute; everything else is below the knee.
-const ANAMORPHIC_FRAGMENT = /* glsl */ `
-  uniform float uStrength;
-  uniform float uThreshold;
-  uniform vec3 uTint;
-
-  void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
-    vec3 streak = vec3(0.0);
-    float total = 0.0;
-    for (int i = 0; i < 25; i++) {
-      float fi = float(i - 12);
-      vec2 offset = vec2(fi * 0.0035, 0.0);
-      vec3 s = texture2D(inputBuffer, uv + offset).rgb;
-      float luma = dot(s, vec3(0.2126, 0.7152, 0.0722));
-      // Soft knee above threshold so the transition from "not streaked"
-      // to "streaked" doesn't pop a hard bright dot.
-      float bright = max(0.0, luma - uThreshold);
-      bright = bright * bright;
-      float w = exp(-fi * fi / 40.0);
-      streak += s * bright * w;
-      total += w;
-    }
-    streak /= max(total, 0.0001);
-    outputColor = vec4(inputColor.rgb + streak * uStrength * uTint, inputColor.a);
-  }
-`
-
-export class AnamorphicEffect extends Effect {
-  constructor() {
-    super('AnamorphicEffect', ANAMORPHIC_FRAGMENT, {
-      blendFunction: BlendFunction.NORMAL,
-      uniforms: new Map<string, Uniform<number | Color>>([
-        ['uStrength', new Uniform(0.35)],
-        ['uThreshold', new Uniform(0.9)],
-        ['uTint', new Uniform(new Color(0.55, 0.75, 1.0))],
-      ]),
-    })
   }
 }
 
@@ -180,7 +136,10 @@ export interface PostFX {
     dof: DepthOfFieldEffect
     vignette: VignetteEffect
     noise: NoiseEffect
-    anamorphic: AnamorphicEffect
+    // AnamorphicPass is a full Pass (multi-RT ping-pong), not an Effect
+    // that folds into EffectPass; exposed here for runtime tuning
+    // (threshold, strength, tint) the same way the others are.
+    anamorphic: AnamorphicPass | null
     colorGrade: ColorGradeEffect
   }
   dispose: () => void
@@ -246,17 +205,20 @@ export function createPostFX(
   })
   noise.blendMode.opacity.value = 0.06
 
-  // Anamorphic lens streak + filmic color grade — the "premium/couture"
-  // layer. Anamorphic sits right after bloom so it widens the same hot
-  // spots; color grade goes toward the end so everything the viewer sees
-  // (including bloom halos and streaks) flows through the LUT curve.
-  const anamorphic = new AnamorphicEffect()
+  // Color grade — filmic LUT emulated analytically, safe to fold into the
+  // shared EffectPass.
   const colorGrade = new ColorGradeEffect()
 
   if (enableDof) composer.addPass(new EffectPass(camera, dof))
+
+  // Anamorphic lens streak — separable blur on dedicated render targets.
+  // Goes BEFORE the main EffectPass so bloom picks up the streaks and
+  // color grade applies to the streak + source image together.
+  const anamorphic = enableBloom && enableAnamorphic ? new AnamorphicPass() : null
+  if (anamorphic) composer.addPass(anamorphic)
+
   const chainEffects = [
     enableBloom ? bloom : null,
-    enableBloom && enableAnamorphic ? anamorphic : null,
     enableChromatic ? chromatic : null,
     enableColorGrade ? colorGrade : null,
     enableVignette ? vignette : null,

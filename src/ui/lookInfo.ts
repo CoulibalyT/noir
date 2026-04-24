@@ -1,4 +1,5 @@
 import type { Look } from '../data/looks'
+import type { I18n } from '../i18n'
 
 export interface LookUI {
   setLook: (index: number, look: Look) => void
@@ -6,6 +7,9 @@ export interface LookUI {
   triggerFlash: () => void
   setProgress: (progress: number) => void
   hideScrollHint: () => void
+  // Re-render the current look's strings in the active language. Called when
+  // the user toggles FR/EN from the language switcher.
+  repaint: () => void
 }
 
 // Emit a span per character, indexed — CSS multiplies `--i` by a stagger
@@ -36,7 +40,7 @@ function splitWords(text: string): string {
     .join('')
 }
 
-export function createLookUI(): LookUI {
+export function createLookUI(i18n: I18n): LookUI {
   const lookNumEl = document.getElementById('look-num') as HTMLElement
   const lookNameEl = document.getElementById('look-name') as HTMLElement
   const lookFabricEl = document.getElementById('look-fabric') as HTMLElement
@@ -47,14 +51,16 @@ export function createLookUI(): LookUI {
   const scrollHintEl = document.getElementById('scroll-hint') as HTMLElement
 
   let flashTimeoutId: number | null = null
+  let currentLook: Look | null = null
 
   const paintLook = (look: Look): void => {
-    lookNameEl.innerHTML = splitChars(look.name)
-    lookFabricEl.innerHTML = splitWords(look.fabric)
-    lookDescEl.textContent = look.desc
+    lookNameEl.innerHTML = splitChars(i18n.localize(look.name))
+    lookFabricEl.innerHTML = splitWords(i18n.localize(look.fabric))
+    lookDescEl.textContent = i18n.localize(look.desc)
   }
 
   const setLook = (index: number, look: Look): void => {
+    currentLook = look
     lookInfoEl.classList.remove('visible')
     window.setTimeout(() => {
       lookNumEl.textContent = String(index + 1).padStart(2, '0')
@@ -64,8 +70,13 @@ export function createLookUI(): LookUI {
   }
 
   const showFirstLook = (look: Look): void => {
+    currentLook = look
     paintLook(look)
     lookInfoEl.classList.add('visible')
+  }
+
+  const repaint = (): void => {
+    if (currentLook) paintLook(currentLook)
   }
 
   const triggerFlash = (): void => {
@@ -85,5 +96,5 @@ export function createLookUI(): LookUI {
     scrollHintEl.classList.add('hidden')
   }
 
-  return { setLook, showFirstLook, triggerFlash, setProgress, hideScrollHint }
+  return { setLook, showFirstLook, triggerFlash, setProgress, hideScrollHint, repaint }
 }

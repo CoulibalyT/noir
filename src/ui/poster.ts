@@ -1,5 +1,6 @@
 import type { Look } from '../data/looks'
 import credits from '../data/credits.json'
+import type { I18n } from '../i18n'
 
 interface CreditEntry {
   creator: string | null
@@ -29,6 +30,9 @@ interface CaptureSource {
   // Render one more composed frame right before we read pixels — required
   // because the renderer runs without preserveDrawingBuffer.
   renderOnce: () => void
+  // Active language — poster text follows whatever the user is seeing so a
+  // captured share isn't stuck in French when the page is in English.
+  i18n: I18n
 }
 
 export function createPoster(source: CaptureSource): PosterController {
@@ -131,7 +135,9 @@ export function createPoster(source: CaptureSource): PosterController {
 
       // 5. Bottom block — look title, fabric, creator, source.
       const c = creditsMap[look.id]
-      const title = c?.title ?? look.name
+      const lookName = source.i18n.localize(look.name)
+      const fabric = source.i18n.localize(look.fabric)
+      const title = c?.title ?? lookName
       const creator = c?.creator ?? null
       const platform = c?.platform ?? null
 
@@ -151,11 +157,11 @@ export function createPoster(source: CaptureSource): PosterController {
       // Big serif name
       ctx.fillStyle = 'rgba(232, 228, 223, 0.98)'
       ctx.font = "italic 300 92px 'Cormorant Garamond', serif"
-      ctx.fillText(look.name, blockX, cursorY)
+      ctx.fillText(lookName, blockX, cursorY)
       cursorY += 110
 
       // Title (long editorial subtitle)
-      if (title && title !== look.name) {
+      if (title && title !== lookName) {
         ctx.fillStyle = 'rgba(232, 228, 223, 0.85)'
         ctx.font = "italic 300 34px 'Cormorant Garamond', serif"
         ctx.fillText(title, blockX, cursorY)
@@ -165,7 +171,7 @@ export function createPoster(source: CaptureSource): PosterController {
       // Fabric line
       ctx.fillStyle = 'rgba(201, 185, 154, 0.85)'
       ctx.font = "200 14px 'Outfit', sans-serif"
-      const fabricSpaced = look.fabric.toUpperCase().split('').join(String.fromCharCode(0x2009))
+      const fabricSpaced = fabric.toUpperCase().split('').join(String.fromCharCode(0x2009))
       ctx.fillText(fabricSpaced, blockX, cursorY)
       cursorY += 30
 

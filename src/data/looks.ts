@@ -1,3 +1,5 @@
+import type { Localized } from '../i18n'
+
 export interface LookLighting {
   color: number
   accent: number
@@ -35,12 +37,12 @@ export interface LookAccessories {
 }
 
 export interface MaterialPin {
-  // Label shown on the pin (e.g. "Brocart impérial").
-  label: string
+  // Label shown on the pin (e.g. "Brocart impérial"). Bilingual.
+  label: Localized
   // Optional secondary line under the label.
-  detail?: string
+  detail?: Localized
   // Long description revealed when the pin is clicked/expanded.
-  description?: string
+  description?: Localized
   // Anchor point in model-local coordinates (meters, after fitToHeight).
   // Origin is at the feet, y up, z+ facing the camera at start of orbit.
   anchor: [number, number, number]
@@ -50,9 +52,9 @@ export interface MaterialPin {
 
 export interface Look {
   id: string
-  name: string
-  fabric: string
-  desc: string
+  name: Localized
+  fabric: Localized
+  desc: Localized
   lighting: LookLighting
   outfit: OutfitDefinition
   model?: string
@@ -71,42 +73,68 @@ export interface Look {
 export const LOOKS: Look[] = [
   {
     id: 'heritage',
-    name: 'Héritage',
-    fabric: 'Brocart de soie · Fils d’or 24 carats · Dentelle rouge cochenille',
-    desc: 'Cinq siècles dans la trame. Phénix brodé main sur soie teinte au thé vert, bandes arc-en-ciel aux manches, rouge cérémoniel interdit aux roturiers par édit royal. On ne porte pas ce vêtement — on l’endosse comme une dynastie.',
+    name: { fr: 'Héritage', en: 'Heritage' },
+    fabric: {
+      fr: 'Brocart de soie · Fils d’or 24 carats · Dentelle rouge cochenille',
+      en: 'Silk brocade · 24-karat gold thread · Cochineal-dyed red lace',
+    },
+    desc: {
+      fr: 'Cinq siècles dans la trame. Phénix brodé main sur soie teinte au thé vert, bandes arc-en-ciel aux manches, rouge cérémoniel interdit aux roturiers par édit royal. On ne porte pas ce vêtement — on l’endosse comme une dynastie.',
+      en: 'Five centuries woven into the cloth. Phoenix hand-embroidered on green-tea-dyed silk, rainbow bands at the sleeves, ceremonial red forbidden to commoners by royal edict. You don’t wear this garment — you take it on like a dynasty.',
+    },
     lighting: { color: 0x1a1210, accent: 0xd4a960, spotColor: 0xfff0d5 },
     model: 'look1.glb',
     hideFloatingProps: true,
     pins: [
       {
-        label: 'Brocart impérial',
-        detail: '원삼 · Soie tissée main',
-        description:
-          'Tissage jacquard sur métier traditionnel. Fil de soie teint au thé vert pour le fond, motifs idéogrammiques "longue vie" rebrodés fil d’or 24 carats.',
+        label: { fr: 'Brocart impérial', en: 'Imperial brocade' },
+        detail: {
+          fr: '원삼 · Soie tissée main',
+          en: '원삼 · Hand-woven silk',
+        },
+        description: {
+          fr: 'Tissage jacquard sur métier traditionnel. Fil de soie teint au thé vert pour le fond, motifs idéogrammiques "longue vie" rebrodés fil d’or 24 carats.',
+          en: 'Jacquard woven on a traditional loom. Green-tea-dyed silk ground, "longevity" ideogram motifs re-embroidered in 24-karat gold thread.',
+        },
         anchor: [0, 1.25, 0.22],
         atProgress: 0.15,
       },
       {
-        label: '색동 · Saekdong',
-        detail: 'Bandes arc-en-ciel sur les manches',
-        description:
-          'Cinq couleurs du pungsu — rouge, jaune, bleu, blanc, noir — alignées en bandes horizontales. Symbole de protection porté par les enfants de cour et les reines aux cérémonies.',
+        label: { fr: '색동 · Saekdong', en: '색동 · Saekdong' },
+        detail: {
+          fr: 'Bandes arc-en-ciel sur les manches',
+          en: 'Rainbow bands at the sleeves',
+        },
+        description: {
+          fr: 'Cinq couleurs du pungsu — rouge, jaune, bleu, blanc, noir — alignées en bandes horizontales. Symbole de protection porté par les enfants de cour et les reines aux cérémonies.',
+          en: 'The five pungsu colours — red, yellow, blue, white, black — laid in horizontal bands. A protective emblem worn by court children and queens at ceremony.',
+        },
         anchor: [0.42, 1.05, 0.05],
         atProgress: 0.4,
       },
       {
-        label: '흉배 · Rang royal',
-        detail: 'Emblème phénix brodé fil d’or',
-        description:
-          'Le rectangle brodé 봉황흉배 désigne le rang de reine. Double phénix mâle-femelle sur fond de pivoines — l’iconographie exacte des dames du palais de Changdeokgung.',
+        label: { fr: '흉배 · Rang royal', en: '흉배 · Royal rank' },
+        detail: {
+          fr: 'Emblème phénix brodé fil d’or',
+          en: 'Phoenix emblem in gold thread',
+        },
+        description: {
+          fr: 'Le rectangle brodé 봉황흉배 désigne le rang de reine. Double phénix mâle-femelle sur fond de pivoines — l’iconographie exacte des dames du palais de Changdeokgung.',
+          en: 'The embroidered 봉황흉배 rectangle marks the rank of queen. Twin male-female phoenix on a peony ground — the exact iconography of the ladies of Changdeokgung palace.',
+        },
         anchor: [0, 1.2, -0.2],
         atProgress: 0.65,
       },
       {
-        label: '홍치마 · Jupe rouge',
-        detail: 'Satin duchesse teinté cochenille',
-        description:
-          'Sous-jupe en satin cinq couches. Teinture cochenille broyée à la main — le rouge cérémoniel de la cour Joseon, interdit aux roturiers par édit royal.',
+        label: { fr: '홍치마 · Jupe rouge', en: '홍치마 · Red skirt' },
+        detail: {
+          fr: 'Satin duchesse teinté cochenille',
+          en: 'Duchesse satin, cochineal-dyed',
+        },
+        description: {
+          fr: 'Sous-jupe en satin cinq couches. Teinture cochenille broyée à la main — le rouge cérémoniel de la cour Joseon, interdit aux roturiers par édit royal.',
+          en: 'Five-layer satin underskirt. Hand-ground cochineal dye — the ceremonial red of the Joseon court, forbidden to commoners by royal edict.',
+        },
         anchor: [0, 0.45, 0.25],
         atProgress: 0.88,
       },
@@ -125,21 +153,33 @@ export const LOOKS: Look[] = [
   },
   {
     id: 'dentelle',
-    name: 'Dentelle',
-    fabric: 'Velours bourgogne profond · Dentelle noire filigranée · Bustier armé',
-    desc: 'Robe-fourreau en velours teint cinq fois. Le tissu absorbe la lumière, la dentelle la rend au décuple — travaillée en filigrane floral, posée en transparence sur un bustier baleiné. L’ourlet traîne, la coupe mord le corps.',
+    name: { fr: 'Dentelle', en: 'Lace' },
+    fabric: {
+      fr: 'Velours bourgogne profond · Dentelle noire filigranée · Bustier armé',
+      en: 'Deep burgundy velvet · Filigreed black lace · Boned bustier',
+    },
+    desc: {
+      fr: 'Robe-fourreau en velours teint cinq fois. Le tissu absorbe la lumière, la dentelle la rend au décuple — travaillée en filigrane floral, posée en transparence sur un bustier baleiné. L’ourlet traîne, la coupe mord le corps.',
+      en: 'Sheath dress in velvet dyed five times over. The fabric drinks light, the lace throws it back — filigreed in floral relief, laid over a boned bustier. The hem drags, the cut bites the body.',
+    },
     lighting: { color: 0x0a0a0d, accent: 0xc0bdc8, spotColor: 0xfafaff },
     model: 'look2.glb',
     pins: [
       {
-        label: 'Dentelle filigranée',
-        detail: 'Motif floral · maille fine',
+        label: { fr: 'Dentelle filigranée', en: 'Filigreed lace' },
+        detail: {
+          fr: 'Motif floral · maille fine',
+          en: 'Floral motif · fine mesh',
+        },
         anchor: [0, 1.1, 0.18],
         atProgress: 0.2,
       },
       {
-        label: 'Escarpins open-toe',
-        detail: 'Cuir verni · talon 10 cm',
+        label: { fr: 'Escarpins open-toe', en: 'Open-toe pumps' },
+        detail: {
+          fr: 'Cuir verni · talon 10 cm',
+          en: 'Patent leather · 10 cm heel',
+        },
         anchor: [0, 0.08, 0.15],
         atProgress: 0.6,
       },
@@ -157,25 +197,41 @@ export const LOOKS: Look[] = [
   },
   {
     id: 'givre',
-    name: 'Givre',
-    fabric: 'Toile de coton écru · Twill denim brut · Ferrures métal apparentes',
-    desc: 'Tailleur déconstruit — coupe utilitaire, poches cargo empilées, zips argentés à la vue. Le luxe se déguise en équipement de terrain : surpiqûres contrastées, sangles tactiques, rien de décoratif. Le givre est dans la précision, pas dans l’ornement.',
+    name: { fr: 'Givre', en: 'Frost' },
+    fabric: {
+      fr: 'Toile de coton écru · Twill denim brut · Ferrures métal apparentes',
+      en: 'Raw cotton canvas · Unwashed denim twill · Exposed metal hardware',
+    },
+    desc: {
+      fr: 'Tailleur déconstruit — coupe utilitaire, poches cargo empilées, zips argentés à la vue. Le luxe se déguise en équipement de terrain : surpiqûres contrastées, sangles tactiques, rien de décoratif. Le givre est dans la précision, pas dans l’ornement.',
+      en: 'Deconstructed tailoring — utility cut, stacked cargo pockets, silver zips on display. Luxury disguised as field gear: contrast topstitching, tactical straps, nothing decorative. The frost lives in the precision, not the ornament.',
+    },
     lighting: { color: 0x10131a, accent: 0xb8d4e8, spotColor: 0xeef4ff },
     model: 'look3_naomi/E.gltf',
     pins: [
       {
-        label: 'Snowflakes',
-        detail: 'Broderie fil métallique',
-        description:
-          'Motif flocon répété sur dentelle ajourée. Fil argenté tissé main, ~280 points par flocon.',
+        label: { fr: 'Snowflakes', en: 'Snowflakes' },
+        detail: {
+          fr: 'Broderie fil métallique',
+          en: 'Metallic thread embroidery',
+        },
+        description: {
+          fr: 'Motif flocon répété sur dentelle ajourée. Fil argenté tissé main, ~280 points par flocon.',
+          en: 'Snowflake motif repeated on openwork lace. Hand-woven silver thread, ~280 stitches per flake.',
+        },
         anchor: [0, 1.2, 0.2],
         atProgress: 0.25,
       },
       {
-        label: 'Bones',
-        detail: 'Armature corset apparente',
-        description:
-          'Baleines métalliques visibles sous la dentelle. Référence à la lingerie corsetterie 1890s, retournée comme un statement structurel.',
+        label: { fr: 'Bones', en: 'Bones' },
+        detail: {
+          fr: 'Armature corset apparente',
+          en: 'Exposed corset boning',
+        },
+        description: {
+          fr: 'Baleines métalliques visibles sous la dentelle. Référence à la lingerie corsetterie 1890s, retournée comme un statement structurel.',
+          en: 'Metal boning visible under the lace. A nod to 1890s corsetry, flipped into a structural statement.',
+        },
         anchor: [0.35, 0.95, 0.05],
         atProgress: 0.6,
       },
@@ -194,11 +250,58 @@ export const LOOKS: Look[] = [
   },
   {
     id: 'clown',
-    name: 'Clown',
-    fabric: 'Dentelle translucide cousue main · Coupe tailleur stricte · Finitions métal',
-    desc: 'Veste structurée et pantalon taille haute, intégralement en dentelle. Rien à cacher, rien à offrir — la transparence comme armure. Les coutures suivent la coupe d’un costume masculin classique, la matière en démonte toute l’autorité.',
+    name: { fr: 'Clown', en: 'Clown' },
+    fabric: {
+      fr: 'Dentelle translucide cousue main · Coupe tailleur stricte · Finitions métal',
+      en: 'Hand-stitched translucent lace · Strict tailoring · Metal hardware',
+    },
+    desc: {
+      fr: 'Veste structurée et pantalon taille haute, intégralement en dentelle. Rien à cacher, rien à offrir — la transparence comme armure. Les coutures suivent la coupe d’un costume masculin classique, la matière en démonte toute l’autorité.',
+      en: 'Structured jacket and high-waisted trousers, wholly in lace. Nothing to hide, nothing to offer — transparency as armour. The seams follow the cut of a classic men’s suit, while the fabric dismantles its authority.',
+    },
     lighting: { color: 0x120a14, accent: 0xe8a8c4, spotColor: 0xfff4fa },
     model: 'clown_v2/e.gltf',
+    pins: [
+      {
+        label: { fr: 'Dentelle', en: 'Lace' },
+        detail: {
+          fr: 'Tissage filigrane cousue main',
+          en: 'Hand-stitched filigree weave',
+        },
+        description: {
+          fr: 'Dentelle ajourée reproduisant un motif floral édouardien. Posée sur une base tulle ton chair, le réseau de fils noirs lit au premier regard comme un tatouage.',
+          en: 'Openwork lace replicating an Edwardian floral motif. Laid over a flesh-tone tulle base, the black thread network reads first as a tattoo.',
+        },
+        anchor: [0, 1.35, 0.18],
+        atProgress: 0.25,
+      },
+      {
+        label: { fr: 'Tailleur', en: 'Tailoring' },
+        detail: {
+          fr: 'Épaule structurée, revers cran italien',
+          en: 'Structured shoulder, Italian peak lapel',
+        },
+        description: {
+          fr: 'La coupe suit un smoking masculin strict — toile thermocollée dans le haut, padding minimaliste, revers à cran droit haut. La dentelle prend ainsi la tension d’une armure, pas d’une lingerie.',
+          en: 'The cut follows a strict men’s tuxedo — fused canvas in the chest, minimal padding, high peak lapel. The lace takes on the tension of armour, not lingerie.',
+        },
+        anchor: [0.28, 1.52, 0.05],
+        atProgress: 0.55,
+      },
+      {
+        label: { fr: 'Finitions métal', en: 'Metal hardware' },
+        detail: {
+          fr: 'Boutonnière chainette argent massif',
+          en: 'Buttonhole with solid silver chain',
+        },
+        description: {
+          fr: 'Chaînette et boutons en argent brossé, cousus main sur la fermeture. Le reflet métallique contre la transparence signe la pièce — un contraste d’armature.',
+          en: 'Brushed silver chain and buttons, hand-stitched along the closure. Metal reflection against transparency is the piece’s signature — a contrast of framework.',
+        },
+        anchor: [-0.08, 1.15, 0.16],
+        atProgress: 0.8,
+      },
+    ],
     outfit: {
       skin: { color: 0x2a1f1a, roughness: 0.7, metalness: 0.1 },
       main: { color: 0x2a1a2a, roughness: 0.6, metalness: 0.2 },

@@ -1,6 +1,7 @@
 import { Vector3 } from 'three'
 import type { Object3D, PerspectiveCamera } from 'three'
 import type { MaterialPin } from '../data/looks'
+import type { I18n } from '../i18n'
 
 interface PinHandle {
   data: MaterialPin
@@ -29,21 +30,32 @@ export interface PinLayer {
   setPins: (pins: MaterialPin[], host: Object3D) => void
   update: (camera: PerspectiveCamera, localProgress: number) => void
   clear: () => void
+  // Re-render text content in the active language when the user toggles FR/EN.
+  repaint: () => void
   dispose: () => void
 }
 
-export function createPinLayer(container: HTMLElement): PinLayer {
+export function createPinLayer(container: HTMLElement, i18n: I18n): PinLayer {
   const root = document.createElement('div')
   root.className = 'pin-layer'
   container.appendChild(root)
 
   let active: PinHandle[] = []
 
+  const labelFor = (data: MaterialPin): string => i18n.localize(data.label)
+  const detailFor = (data: MaterialPin): string | null =>
+    data.detail ? i18n.localize(data.detail) : null
+  const descriptionFor = (data: MaterialPin): string | null =>
+    data.description ? i18n.localize(data.description) : null
+
   const buildHandle = (data: MaterialPin, host: Object3D): PinHandle => {
     const wrapper = document.createElement('button')
     wrapper.className = 'pin'
     wrapper.type = 'button'
-    wrapper.setAttribute('aria-label', `${data.label} — ${data.detail ?? ''}`)
+    wrapper.setAttribute(
+      'aria-label',
+      `${labelFor(data)} — ${detailFor(data) ?? ''}`,
+    )
 
     const dot = document.createElement('span')
     dot.className = 'pin-dot'
@@ -63,18 +75,20 @@ export function createPinLayer(container: HTMLElement): PinLayer {
 
     const label = document.createElement('span')
     label.className = 'pin-label'
-    label.textContent = data.label
+    label.textContent = labelFor(data)
     card.appendChild(label)
-    if (data.detail) {
+    const detailText = detailFor(data)
+    if (detailText) {
       const detail = document.createElement('span')
       detail.className = 'pin-detail'
-      detail.textContent = data.detail
+      detail.textContent = detailText
       card.appendChild(detail)
     }
-    if (data.description) {
+    const descriptionText = descriptionFor(data)
+    if (descriptionText) {
       const description = document.createElement('span')
       description.className = 'pin-description'
-      description.textContent = data.description
+      description.textContent = descriptionText
       card.appendChild(description)
     }
     wrapper.appendChild(card)
@@ -155,5 +169,25 @@ export function createPinLayer(container: HTMLElement): PinLayer {
     root.remove()
   }
 
-  return { setPins, update, clear, dispose }
+  // Language toggle — rebuild text nodes in place so the pin positions and
+  // expanded state survive the switch.
+  const repaint = (): void => {
+    for (const p of active) {
+      const data = p.data
+      p.root.setAttribute(
+        'aria-label',
+        `${labelFor(data)} — ${detailFor(data) ?? ''}`,
+      )
+      const labelEl = p.root.querySelector('.pin-label')
+      if (labelEl) labelEl.textContent = labelFor(data)
+      const detailEl = p.root.querySelector('.pin-detail')
+      const detailText = detailFor(data)
+      if (detailEl && detailText) detailEl.textContent = detailText
+      const descEl = p.root.querySelector('.pin-description')
+      const descText = descriptionFor(data)
+      if (descEl && descText) descEl.textContent = descText
+    }
+  }
+
+  return { setPins, update, clear, repaint, dispose }
 }
