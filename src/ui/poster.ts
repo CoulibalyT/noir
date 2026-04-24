@@ -1,0 +1,230 @@
+import type { Look } from '../data/looks'
+import credits from '../data/credits.json'
+
+interface CreditEntry {
+  creator: string | null
+  portfolio: string | null
+  platform: string | null
+  sourceAsset: string | null
+  title: string | null
+}
+
+const creditsMap = credits as Record<string, CreditEntry>
+
+export interface PosterController {
+  capture: (opts: { look: Look; index: number; total: number }) => Promise<void>
+  dispose: () => void
+}
+
+// 1080 × 1920 is the 9:16 share size (IG story / TikTok native). Output is
+// generated on a fresh <canvas> in JS, NOT by resizing the renderer, so the
+// on-screen experience is never interrupted.
+const POSTER_W = 1080
+const POSTER_H = 1920
+
+interface CaptureSource {
+  // Provides the current WebGL canvas. Called inside a render-and-grab
+  // cycle so the caller controls when a fresh frame is drawn.
+  readCanvas: () => HTMLCanvasElement
+  // Render one more composed frame right before we read pixels — required
+  // because the renderer runs without preserveDrawingBuffer.
+  renderOnce: () => void
+}
+
+export function createPoster(source: CaptureSource): PosterController {
+  // Toast DOM — minimal notification when a poster is saved.
+  const toast = document.createElement('div')
+  toast.className = 'poster-toast'
+  document.body.appendChild(toast)
+
+  let busy = false
+
+  const showToast = (msg: string): void => {
+    toast.textContent = msg
+    toast.classList.add('visible')
+    window.setTimeout(() => toast.classList.remove('visible'), 2200)
+  }
+
+  const capture = async ({ look, index, total }: Parameters<PosterController['capture']>[0]): Promise<void> => {
+    if (busy) return
+    busy = true
+    try {
+      // Force a fresh render then read pixels in the same frame — otherwise
+      // the drawing buffer may already be cleared.
+      source.renderOnce()
+      const src = source.readCanvas()
+
+      const out = document.createElement('canvas')
+      out.width = POSTER_W
+      out.height = POSTER_H
+      const ctx = out.getContext('2d')
+      if (!ctx) throw new Error('2D context unavailable')
+
+      // 1. Base background — same near-black as the scene so any gradient
+      // overlay blends seamlessly with the WebGL frame.
+      ctx.fillStyle = '#0a0a0a'
+      ctx.fillRect(0, 0, POSTER_W, POSTER_H)
+
+      // 2. Center-crop the landscape WebGL frame into the 9:16 portrait.
+      // We keep full source height and take a central vertical slice of
+      // width = srcH * targetAR, so the mannequin (roughly centered) stays
+      // in view.
+      const targetAR = POSTER_W / POSTER_H
+      const srcAR = src.width / src.height
+      let sx = 0
+      let sy = 0
+      let sw = src.width
+      let sh = src.height
+      if (srcAR > targetAR) {
+        // Source is wider than target — crop horizontally.
+        sw = src.height * targetAR
+        sx = (src.width - sw) / 2
+      } else {
+        // Source is taller than target — crop vertically.
+        sh = src.width / targetAR
+        sy = (src.height - sh) / 2
+      }
+      ctx.drawImage(src, sx, sy, sw, sh, 0, 0, POSTER_W, POSTER_H)
+
+      // 3. Gradient wash — top and bottom so the typography reads cleanly
+      // over whatever the scene happens to be showing.
+      const topGrad = ctx.createLinearGradient(0, 0, 0, POSTER_H * 0.35)
+      topGrad.addColorStop(0, 'rgba(10,10,10,0.85)')
+      topGrad.addColorStop(1, 'rgba(10,10,10,0)')
+      ctx.fillStyle = topGrad
+      ctx.fillRect(0, 0, POSTER_W, POSTER_H * 0.35)
+
+      const botGrad = ctx.createLinearGradient(0, POSTER_H * 0.55, 0, POSTER_H)
+      botGrad.addColorStop(0, 'rgba(10,10,10,0)')
+      botGrad.addColorStop(1, 'rgba(10,10,10,0.92)')
+      ctx.fillStyle = botGrad
+      ctx.fillRect(0, POSTER_H * 0.55, POSTER_W, POSTER_H * 0.45)
+
+      // 4. Header block — brand + season. Right side shows look n°.
+      ctx.fillStyle = 'rgba(232, 228, 223, 0.82)'
+      ctx.textBaseline = 'top'
+      ctx.font = "200 22px 'Outfit', sans-serif"
+      const headerY = 88
+      ctx.textAlign = 'left'
+      ctx.fillText('NØIR HAUS'.split('').join(String.fromCharCode(0x2009)), 88, headerY)
+      ctx.textAlign = 'right'
+      ctx.fillText(`N° ${String(index + 1).padStart(2, '0')} / ${String(total).padStart(2, '0')}`, POSTER_W - 88, headerY)
+
+      // Accent hairline under the header
+      ctx.strokeStyle = 'rgba(201, 185, 154, 0.6)'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.moveTo(88, headerY + 46)
+      ctx.lineTo(POSTER_W - 88, headerY + 46)
+      ctx.stroke()
+
+      ctx.textAlign = 'left'
+      ctx.fillStyle = 'rgba(201, 185, 154, 0.9)'
+      ctx.font = "200 14px 'Outfit', sans-serif"
+      ctx.fillText(
+        'AUTOMNE'.split('').join(String.fromCharCode(0x2009)) +
+          '   —   ' +
+          'HIVER 2026'.split('').join(String.fromCharCode(0x2009)),
+        88,
+        headerY + 70,
+      )
+
+      // 5. Bottom block — look title, fabric, creator, source.
+      const c = creditsMap[look.id]
+      const title = c?.title ?? look.name
+      const creator = c?.creator ?? null
+      const platform = c?.platform ?? null
+
+      const blockX = 88
+      let cursorY = POSTER_H - 320
+
+      // Tiny label
+      ctx.fillStyle = 'rgba(201, 185, 154, 0.65)'
+      ctx.font = "200 13px 'Outfit', sans-serif"
+      ctx.fillText(
+        'Regard'.split('').join(String.fromCharCode(0x2009)),
+        blockX,
+        cursorY,
+      )
+      cursorY += 36
+
+      // Big serif name
+      ctx.fillStyle = 'rgba(232, 228, 223, 0.98)'
+      ctx.font = "italic 300 92px 'Cormorant Garamond', serif"
+      ctx.fillText(look.name, blockX, cursorY)
+      cursorY += 110
+
+      // Title (long editorial subtitle)
+      if (title && title !== look.name) {
+        ctx.fillStyle = 'rgba(232, 228, 223, 0.85)'
+        ctx.font = "italic 300 34px 'Cormorant Garamond', serif"
+        ctx.fillText(title, blockX, cursorY)
+        cursorY += 46
+      }
+
+      // Fabric line
+      ctx.fillStyle = 'rgba(201, 185, 154, 0.85)'
+      ctx.font = "200 14px 'Outfit', sans-serif"
+      const fabricSpaced = look.fabric.toUpperCase().split('').join(String.fromCharCode(0x2009))
+      ctx.fillText(fabricSpaced, blockX, cursorY)
+      cursorY += 30
+
+      // Creator line bottom-right
+      if (creator) {
+        ctx.textAlign = 'right'
+        ctx.fillStyle = 'rgba(232, 228, 223, 0.7)'
+        ctx.font = "300 13px 'Outfit', sans-serif"
+        const creatorText = platform ? `${creator} · ${platform}` : creator
+        ctx.fillText(
+          creatorText.toUpperCase().split('').join(String.fromCharCode(0x2009)),
+          POSTER_W - 88,
+          POSTER_H - 88,
+        )
+        ctx.textAlign = 'left'
+      }
+
+      // Footer hairline
+      ctx.strokeStyle = 'rgba(232, 228, 223, 0.15)'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.moveTo(88, POSTER_H - 120)
+      ctx.lineTo(POSTER_W - 88, POSTER_H - 120)
+      ctx.stroke()
+
+      ctx.fillStyle = 'rgba(232, 228, 223, 0.55)'
+      ctx.font = "200 11px 'Outfit', sans-serif"
+      ctx.fillText(
+        'PARIS  /  AW 26'.split('').join(String.fromCharCode(0x2009)),
+        blockX,
+        POSTER_H - 88,
+      )
+
+      // 6. Download
+      const blob = await new Promise<Blob | null>((resolve) => out.toBlob(resolve, 'image/png'))
+      if (!blob) throw new Error('toBlob failed')
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `noir-haus-aw26-${look.id}.png`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      // Let the browser start the download before revoking.
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+
+      showToast('Affiche exportée')
+    } catch (err) {
+      // Swallow and notify — capture failing shouldn't crash the scene loop.
+      // eslint-disable-next-line no-console
+      console.warn('[poster] capture failed', err)
+      showToast('Export impossible')
+    } finally {
+      busy = false
+    }
+  }
+
+  return {
+    capture,
+    dispose: () => toast.remove(),
+  }
+}

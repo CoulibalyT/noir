@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0a0a" />
+    <title>NØIR HAUS — Défilé</title>
+    <meta
+      name="description"
+      content="NØIR HAUS — Défilé Automne-Hiver 2026. Une expérience 3D immersive."
+    />
+    <meta property="og:title" content="NØIR HAUS — Défilé AW26" />
+    <meta property="og:description" content="Une expérience 3D immersive." />
+    <meta property="og:image" content="/og-image.jpg" />
+    <meta property="og:type" content="website" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Outfit:wght@200;300;400&display=swap"
+    />
+  </head>
+  <body>
+    <div class="intro-overlay" id="intro">
+      <div class="intro-corner intro-corner--tl" data-intro-reveal>N° 01 — DÉFILÉ</div>
+      <div class="intro-corner intro-corner--tr" data-intro-reveal>AW 26</div>
+
+      <div class="intro-center">
+        <div class="intro-title" id="intro-title">NØIR HAUS</div>
+        <div class="intro-banner">
+          <span class="intro-banner-line"></span>
+          <span class="intro-banner-label" data-intro-reveal>Défilé</span>
+          <span class="intro-banner-line"></span>
+        </div>
+        <div class="intro-season" id="intro-season">Automne — Hiver 2026</div>
+      </div>
+
+      <div class="intro-corner intro-corner--bl" data-intro-reveal>Paris / 24.04.2026</div>
+      <div class="intro-corner intro-corner--br" data-intro-reveal>4 regards</div>
+
+      <div class="intro-progress-wrap" id="intro-progress">
+        <div class="intro-progress-rail">
+          <div class="intro-progress-fill" id="intro-progress-fill"></div>
+        </div>
+        <div class="intro-progress-label" id="intro-progress-label">00%</div>
+      </div>
+    </div>
+
+    <div class="cursor-ring" id="cursor"></div>
+    <div class="cursor-dot" id="cursor-dot"></div>
+
+    <div id="canvas-container"></div>
+    <div id="scroll-container"></div>
+
+    <div class="flash" id="flash"></div>
+    <div class="progress-bar" id="progress-bar"></div>
+
+    <header class="overlay brand">
+      <h1>Nøir Haus</h1>
+      <div class="subtitle">Automne — Hiver 2026</div>
+    </header>
+
+    <div class="overlay season-tag">AW26 — PARIS</div>
+
+    <div class="overlay look-counter">
+      <div class="current" id="look-num">01</div>
+      <div class="total">/ 04</div>
+    </div>
+
+    <div class="overlay look-info" id="look-info">
+      <div class="look-name" id="look-name"></div>
+      <div class="look-fabric" id="look-fabric"></div>
+      <div class="look-desc" id="look-desc"></div>
+    </div>
+
+    <div class="credits-marquee" id="credits-marquee" aria-hidden="true">
+      <div class="credits-marquee-title" id="credits-marquee-title"></div>
+      <div class="credits-marquee-meta" id="credits-marquee-meta"></div>
+    </div>
+
+    <div class="credits-cartel" id="credits-cartel" aria-hidden="true">
+      <div class="credits-cartel-inner">
+        <div class="credits-cartel-label">Couture</div>
+        <div class="credits-cartel-title" id="credits-cartel-title"></div>
+        <div class="credits-cartel-creator" id="credits-cartel-creator"></div>
+        <a
+          class="credits-cartel-link"
+          id="credits-cartel-link"
+          target="_blank"
+          rel="noopener noreferrer"
+        ></a>
+      </div>
+    </div>
+
+    <div class="overlay scroll-hint" id="scroll-hint">
+      <span>Glissez pour entrer</span>
+      <div class="scroll-line"></div>
+    </div>
+
+    <button id="audio-toggle" class="audio-toggle" aria-label="Activer le son" type="button">
+      <span class="audio-toggle-label">Son</span>
+      <span class="audio-toggle-state" id="audio-toggle-state">off</span>
+    </button>
+
+    <div id="debug-hud" class="debug-hud"></div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

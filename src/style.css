@@ -1,0 +1,1160 @@
+:root {
+  --color-bg: #0a0a0a;
+  --color-text: #e8e4df;
+  --color-accent: #c9b99a;
+  /* 0.55 alpha hits ~5.3:1 contrast on the background — passes WCAG AA
+     for normal text while still reading as muted vs --color-text. */
+  --color-muted: rgba(232, 228, 223, 0.55);
+  --font-display: 'Cormorant Garamond', serif;
+  --font-body: 'Outfit', sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Keyboard focus — visible outline for all interactive elements.
+   Only triggers on keyboard nav (not mouse click) thanks to :focus-visible. */
+button:focus-visible,
+[tabindex]:focus-visible,
+a:focus-visible {
+  outline: 1px solid var(--color-accent);
+  outline-offset: 4px;
+  outline-style: solid;
+}
+.pin:focus-visible {
+  outline: none;
+}
+.pin:focus-visible .pin-dot {
+  transform: scale(1.6);
+  box-shadow: 0 0 22px rgba(201, 185, 154, 0.9);
+}
+.pin:focus-visible .pin-card {
+  background: rgba(10, 10, 10, 0.5);
+  outline: 1px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Respect OS-level "Reduce motion" — cuts animations, transitions, and the
+   pulsing scroll hint. The JS side (quality.reducedMotion) additionally
+   freezes camera shake + audience sway + particle drift. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .scroll-line {
+    animation: none !important;
+    opacity: 0.8 !important;
+  }
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  cursor: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+body.no-scroll,
+html.no-scroll {
+  overflow: hidden;
+}
+
+@media (pointer: coarse) {
+  body { cursor: auto; }
+  .cursor-ring,
+  .cursor-dot { display: none !important; }
+}
+
+/* Custom cursor */
+.cursor-ring {
+  position: fixed;
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--color-accent);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9999;
+  transition: transform 0.15s ease;
+  mix-blend-mode: difference;
+  top: 0;
+  left: 0;
+  transform: translate3d(-100px, -100px, 0);
+}
+
+.cursor-dot {
+  position: fixed;
+  width: 3px;
+  height: 3px;
+  background: var(--color-accent);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9999;
+  top: 0;
+  left: 0;
+  transform: translate3d(-100px, -100px, 0);
+}
+
+#canvas-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1;
+}
+
+canvas { display: block; }
+
+#scroll-container {
+  position: relative;
+  z-index: 0;
+  height: 800vh;
+  width: 100%;
+}
+
+.overlay {
+  position: fixed;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Brand header */
+.brand {
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+.brand h1 {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: 1.1rem;
+  letter-spacing: 1.2em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  opacity: 0;
+  animation: fadeIn 2s ease 0.5s forwards;
+}
+.brand .subtitle {
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.6rem;
+  letter-spacing: 0.5em;
+  color: var(--color-muted);
+  margin-top: 8px;
+  opacity: 0;
+  animation: fadeIn 2s ease 1s forwards;
+}
+
+/* Season tag */
+.season-tag {
+  bottom: 40px;
+  left: 40px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.55rem;
+  letter-spacing: 0.4em;
+  color: var(--color-muted);
+  opacity: 0;
+  animation: fadeIn 2s ease 1.5s forwards;
+}
+
+/* Look counter */
+.look-counter {
+  bottom: 40px;
+  right: 40px;
+  text-align: right;
+  opacity: 0;
+  animation: fadeIn 2s ease 1.5s forwards;
+}
+.look-counter .current {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: 3rem;
+  line-height: 1;
+  color: var(--color-accent);
+}
+.look-counter .total {
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.6rem;
+  letter-spacing: 0.3em;
+  color: var(--color-muted);
+}
+
+/* Look info panel */
+.look-info {
+  top: 50%;
+  right: 60px;
+  transform: translateY(-50%);
+  text-align: right;
+  transition: opacity 0.8s ease;
+}
+.look-info .look-name {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-style: italic;
+  font-size: 1.8rem;
+  color: var(--color-text);
+  /* 3d transforms on the children need perspective on the container. */
+  perspective: 600px;
+  /* Preserve the right-aligned wrapping when each char is inline-block. */
+  display: block;
+}
+.look-info .look-fabric {
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.6rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-top: 12px;
+}
+.look-info .look-desc {
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  margin-top: 8px;
+  max-width: 200px;
+  margin-left: auto;
+  line-height: 1.6;
+  opacity: 0;
+  transform: translateY(15px);
+  transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.5s;
+}
+.look-info.visible .look-desc {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Per-character reveal on the look name — 3d flip + rise, staggered with
+   `--i` so every letter lands 35ms after the previous one. */
+.look-info .look-name .char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(0.6em) rotateX(-75deg);
+  transform-origin: 50% 100%;
+  transition:
+    opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: calc(var(--i, 0) * 35ms);
+}
+.look-info.visible .look-name .char {
+  opacity: 1;
+  transform: translateY(0) rotateX(0);
+}
+
+/* Word-level reveal on the fabric line — quicker stagger because the line
+   is broken into · separators that a per-char stagger would drag out. */
+.look-info .look-fabric .word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 0.45s ease,
+    transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  /* Fabric words start after the name finishes roughly (name length × 35ms). */
+  transition-delay: calc(280ms + var(--i, 0) * 55ms);
+}
+.look-info.visible .look-fabric .word {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Scroll indicator */
+.scroll-hint {
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  opacity: 0;
+  animation: fadeIn 2s ease 2.5s forwards;
+  transition: opacity 0.6s ease;
+}
+.scroll-hint.hidden {
+  opacity: 0 !important;
+}
+.scroll-hint span {
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.55rem;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  display: block;
+}
+.scroll-line {
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(to bottom, var(--color-accent), transparent);
+  margin: 12px auto 0;
+  animation: scrollPulse 2s ease infinite;
+}
+
+/* Intro overlay — kinetic poster.
+   A GSAP timeline in ui/intro.ts orchestrates the reveals: per-char stagger
+   on the title, banner lines drawing out from the center label, corner
+   metadata fading in last. The progress bar doubles as a typographic
+   element anchored bottom-center. */
+.intro-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--color-bg);
+  z-index: 100;
+  overflow: hidden;
+  transition: opacity 1.2s ease;
+}
+.intro-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.intro-corner {
+  position: absolute;
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.62rem;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.7s ease, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.intro-corner.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+.intro-corner--tl { top: 46px; left: 56px; }
+.intro-corner--tr { top: 46px; right: 56px; }
+.intro-corner--bl { bottom: 46px; left: 56px; }
+.intro-corner--br { bottom: 46px; right: 56px; }
+.intro-playing .intro-corner {
+  animation: introCornerIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.intro-playing .intro-corner--tl { animation-delay: 1.3s; }
+.intro-playing .intro-corner--tr { animation-delay: 1.37s; }
+.intro-playing .intro-corner--bl { animation-delay: 1.44s; }
+.intro-playing .intro-corner--br { animation-delay: 1.51s; }
+@keyframes introCornerIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.intro-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  width: 100%;
+  padding: 0 2rem;
+  pointer-events: none;
+}
+.intro-title {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-style: italic;
+  font-size: clamp(3rem, 10vw, 8.5rem);
+  letter-spacing: 0.12em;
+  line-height: 0.95;
+  color: var(--color-text);
+  perspective: 800px;
+  margin-bottom: 2.2rem;
+}
+.intro-title .char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(0.5em) rotateX(-70deg);
+  transform-origin: 50% 100%;
+  will-change: transform, opacity;
+}
+.intro-title .char--space {
+  width: 0.35em;
+}
+/* Compositor-driven stagger. --char-index is set inline per span in intro.ts;
+   the animation-delay derivative gives the same visual cadence as the old
+   GSAP timeline (35ms per char) but runs off the main thread, so it no
+   longer stutters while Three.js initialises. */
+.intro-playing .intro-title .char {
+  animation: introCharIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--char-index, 0) * 35ms);
+}
+@keyframes introCharIn {
+  to {
+    opacity: 1;
+    transform: translateY(0) rotateX(0);
+  }
+}
+.intro-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  margin: 0 auto 1.6rem;
+  max-width: 520px;
+}
+.intro-banner-line {
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--color-accent);
+  transform: scaleX(0);
+  transform-origin: center;
+}
+.intro-banner-line:first-child { transform-origin: right; }
+.intro-banner-line:last-child { transform-origin: left; }
+.intro-playing .intro-banner-line {
+  animation: introLineIn 0.9s cubic-bezier(0.77, 0, 0.175, 1) 0.5s both;
+}
+@keyframes introLineIn {
+  to { transform: scaleX(1); }
+}
+.intro-banner-label {
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.62rem;
+  letter-spacing: 0.55em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(6px);
+}
+.intro-playing .intro-banner-label {
+  animation: introBannerLabelIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.85s both;
+}
+@keyframes introBannerLabelIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.intro-season {
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.78rem;
+  letter-spacing: 0.48em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  opacity: 0;
+}
+.intro-playing .intro-season {
+  opacity: 1;
+}
+.intro-season .word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(8px);
+}
+.intro-playing .intro-season .word {
+  animation: introWordIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--word-index, 0) * 50ms + 1.2s);
+}
+@keyframes introWordIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.intro-progress-wrap {
+  position: absolute;
+  bottom: 44px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  opacity: 0;
+}
+.intro-playing .intro-progress-wrap {
+  animation: introFadeIn 0.6s ease 1.6s both;
+}
+@keyframes introFadeIn {
+  to { opacity: 1; }
+}
+.intro-progress-rail {
+  width: 280px;
+  height: 1px;
+  background: rgba(232, 228, 223, 0.08);
+  overflow: hidden;
+  position: relative;
+}
+.intro-progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  background: var(--color-accent);
+  transition: width 0.25s ease;
+}
+.intro-progress-label {
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.5rem;
+  letter-spacing: 0.5em;
+  color: var(--color-muted);
+  min-width: 3ch;
+  text-align: left;
+}
+
+/* Flash (camera strobe overlay) */
+.flash {
+  position: fixed;
+  inset: 0;
+  background: white;
+  pointer-events: none;
+  z-index: 8;
+  opacity: 0;
+  transition: opacity 0.05s ease;
+}
+.flash.active {
+  opacity: 0.8;
+}
+
+/* Material pins — anchored on the 3D model, clickable to expand */
+.pin-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 15;
+}
+.pin {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate3d(-100px, -100px, 0);
+  transition: opacity 0.25s ease;
+  will-change: transform, opacity;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: none;
+  display: block;
+}
+.pin-dot {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--color-accent);
+  border-radius: 50%;
+  background: rgba(10, 10, 10, 0.35);
+  backdrop-filter: blur(2px);
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  box-shadow: 0 0 12px rgba(201, 185, 154, 0.35);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.3s ease;
+}
+.pin-dot::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  background: var(--color-accent);
+  border-radius: 50%;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.pin:hover .pin-dot,
+.pin.expanded .pin-dot {
+  transform: scale(1.6);
+  box-shadow: 0 0 22px rgba(201, 185, 154, 0.7);
+}
+.pin-card {
+  position: absolute;
+  top: -10px;
+  left: 18px;
+  padding: 10px 32px 10px 14px; /* extra right padding reserves room for toggle */
+  border-left: 1px solid var(--color-accent);
+  white-space: nowrap;
+  backdrop-filter: blur(3px);
+  background: rgba(10, 10, 10, 0.25);
+  transition: padding 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.35s ease, max-width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  display: block;
+  text-align: left;
+}
+.pin-toggle {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.95rem;
+  line-height: 1;
+  color: var(--color-accent);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: center;
+}
+.pin.expanded .pin-toggle {
+  transform: rotate(45deg); /* + becomes × */
+}
+.pin:hover .pin-card {
+  background: rgba(10, 10, 10, 0.45);
+}
+.pin-label {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--color-text);
+  line-height: 1.1;
+  display: block;
+}
+.pin-detail {
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.55rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-top: 6px;
+  display: block;
+}
+.pin-description {
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.7rem;
+  line-height: 1.55;
+  color: var(--color-muted);
+  margin-top: 12px;
+  display: block;
+  white-space: normal;
+  max-width: 0;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: opacity 0.3s ease, max-width 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    margin-top 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.pin.expanded .pin-card {
+  background: rgba(10, 10, 10, 0.6);
+  padding: 14px 18px 16px 18px;
+}
+.pin.expanded .pin-description {
+  max-width: 280px;
+  max-height: 240px;
+  opacity: 1;
+}
+
+@media (pointer: coarse) {
+  .pin { cursor: pointer; }
+}
+
+@media (max-width: 768px) {
+  .pin-card {
+    left: 16px;
+    padding: 8px 10px;
+  }
+  .pin-label { font-size: 0.8rem; }
+  .pin-detail { font-size: 0.5rem; letter-spacing: 0.25em; }
+  .pin.expanded .pin-description { max-width: 220px; font-size: 0.65rem; }
+}
+
+/* Progress bar */
+.progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--color-accent), transparent);
+  z-index: 20;
+  width: 0%;
+  transition: width 0.1s linear;
+}
+
+/* Debug HUD */
+.debug-hud {
+  position: fixed;
+  top: 90px;
+  left: 20px;
+  z-index: 50;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.6rem;
+  line-height: 1.5;
+  color: #c9b99a;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 8px 10px;
+  border-left: 1px solid var(--color-accent);
+  pointer-events: none;
+  white-space: pre;
+  letter-spacing: 0.02em;
+  max-width: 320px;
+}
+
+/* Audio toggle */
+.audio-toggle {
+  position: fixed;
+  top: 40px;
+  right: 40px;
+  z-index: 30;
+  background: transparent;
+  border: 1px solid var(--color-muted);
+  padding: 10px 14px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.55rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  cursor: none;
+  pointer-events: auto;
+  opacity: 0;
+  animation: fadeIn 2s ease 2s forwards;
+  transition: border-color 0.3s ease, color 0.3s ease;
+}
+.audio-toggle:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.audio-toggle-state {
+  color: var(--color-accent);
+  font-weight: 400;
+}
+.audio-toggle[data-on='true'] .audio-toggle-state {
+  color: var(--color-text);
+}
+
+@media (pointer: coarse) {
+  .audio-toggle { cursor: pointer; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes introReveal {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes lineReveal {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes scrollPulse {
+  0%, 100% { opacity: 0.3; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(5px); }
+}
+
+@media (max-width: 768px) {
+  .brand { top: 24px; }
+  .brand h1 {
+    font-size: 0.75rem;
+    letter-spacing: 0.8em;
+  }
+  .season-tag {
+    bottom: 24px;
+    left: 20px;
+    font-size: 0.45rem;
+  }
+  .look-counter {
+    bottom: 24px;
+    right: 20px;
+  }
+  .look-counter .current { font-size: 2rem; }
+  .look-info {
+    top: auto;
+    bottom: 100px;
+    right: auto;
+    left: 20px;
+    text-align: left;
+    transform: none;
+  }
+  .look-info .look-name { font-size: 1.3rem; }
+  .look-info .look-desc {
+    margin-left: 0;
+    max-width: 60vw;
+  }
+  .scroll-hint { bottom: 60px; }
+  .intro-overlay h1 { letter-spacing: 0.4em; }
+  .audio-toggle {
+    top: 20px;
+    right: 20px;
+    padding: 8px 10px;
+    font-size: 0.45rem;
+    letter-spacing: 0.3em;
+  }
+}
+
+/* ──────────────────────────── FINALE ───────────────────────────
+   Curtain-call state, triggered when the user reaches the end of the
+   last look. The overlay composes over the 3D scene (semi-transparent
+   gradient top/bottom + generous inset so the mannequin lineup behind
+   it stays visible). Replay button scrolls back to the first look. */
+.finale-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 40;
+  background:
+    linear-gradient(180deg, rgba(10, 10, 10, 0.82) 0%, rgba(10, 10, 10, 0.35) 35%, rgba(10, 10, 10, 0.35) 65%, rgba(10, 10, 10, 0.92) 100%);
+  transition: opacity 1s ease;
+}
+.finale-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.finale-inner {
+  width: min(920px, 88vw);
+  text-align: center;
+  padding: 4rem 1.5rem 3.5rem;
+}
+.finale-stamp {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.1rem;
+  margin-bottom: 2.2rem;
+}
+.finale-stamp-line {
+  flex: 0 1 60px;
+  height: 1px;
+  background: rgba(201, 185, 154, 0.5);
+}
+.finale-stamp-label {
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.62rem;
+  letter-spacing: 0.55em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  white-space: nowrap;
+}
+.finale-title {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-style: italic;
+  font-size: clamp(3rem, 9vw, 7.2rem);
+  line-height: 0.95;
+  color: var(--color-text);
+  letter-spacing: 0.04em;
+  perspective: 900px;
+}
+.finale-title span {
+  display: inline-block;
+  transform-origin: 50% 100%;
+  will-change: transform, opacity;
+}
+.finale-title-a { margin-right: 0.2em; }
+.finale-subtitle {
+  margin-top: 1.2rem;
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.8rem;
+  letter-spacing: 0.45em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.finale-divider {
+  width: 0;
+  max-width: 280px;
+  height: 1px;
+  margin: 2.4rem auto;
+  background: rgba(201, 185, 154, 0.4);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.finale-overlay.visible .finale-divider {
+  width: 280px;
+  transform: scaleX(1);
+}
+.finale-credits {
+  list-style: none;
+  padding: 0;
+  margin: 0 auto 2.6rem;
+  max-width: 620px;
+  text-align: left;
+}
+.finale-credit {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(232, 228, 223, 0.08);
+  align-items: baseline;
+}
+.finale-credit:last-child {
+  border-bottom: none;
+}
+.finale-credit-num {
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.6rem;
+  letter-spacing: 0.45em;
+  color: rgba(201, 185, 154, 0.65);
+  padding-top: 0.4rem;
+}
+.finale-credit-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.finale-credit-name {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-style: italic;
+  font-size: 1.35rem;
+  color: var(--color-text);
+  letter-spacing: -0.005em;
+}
+.finale-credit-title {
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.7rem;
+  color: rgba(232, 228, 223, 0.72);
+  letter-spacing: 0.08em;
+}
+.finale-credit-meta {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 0.58rem;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  text-decoration: none;
+  margin-top: 0.15rem;
+  transition: color 0.3s ease, letter-spacing 0.3s ease;
+}
+a.finale-credit-meta:hover {
+  color: var(--color-text);
+  letter-spacing: 0.42em;
+}
+.finale-cta {
+  margin-top: 0.5rem;
+}
+.finale-replay {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-accent);
+  padding: 1rem 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 1rem;
+  transition: color 0.3s ease, gap 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.finale-replay-line {
+  width: 44px;
+  height: 1px;
+  background: currentColor;
+  transition: width 0.35s ease;
+}
+.finale-replay-label {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 0.65rem;
+  letter-spacing: 0.55em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.finale-replay:hover {
+  color: var(--color-text);
+  gap: 1.5rem;
+}
+.finale-replay:hover .finale-replay-line {
+  width: 60px;
+}
+.finale-footer {
+  margin-top: 2rem;
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.5rem;
+  letter-spacing: 0.55em;
+  text-transform: uppercase;
+  color: rgba(232, 228, 223, 0.35);
+}
+@media (max-width: 700px) {
+  .finale-title { font-size: clamp(2.4rem, 13vw, 4.5rem); }
+  .finale-credit-name { font-size: 1.1rem; }
+  .finale-credit-title { font-size: 0.62rem; }
+  .finale-credit { grid-template-columns: 44px 1fr; }
+}
+
+/* Toast shown when a poster is exported (keyboard "P"). */
+.poster-toast {
+  position: fixed;
+  bottom: 44px;
+  left: 50%;
+  transform: translate(-50%, 14px);
+  padding: 14px 28px;
+  background: rgba(10, 10, 10, 0.85);
+  border: 1px solid rgba(201, 185, 154, 0.35);
+  backdrop-filter: blur(8px);
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 0.65rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 30;
+  transition: opacity 0.35s ease, transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.poster-toast.visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* ───────────────────────────── CREDITS ─────────────────────────────
+   Two-layer attribution system:
+   - .credits-marquee: persistent giant title that parallaxes horizontally
+     with the local scroll progress of each look. Sits behind the mannequin
+     as editorial decor, reveals attribution without yelling it.
+   - .credits-cartel: full-screen credit card faded in during dissolve
+     transitions. The loud moment — title, creator, platform link. */
+.credits-marquee {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+.credits-marquee.visible {
+  opacity: 1;
+}
+.credits-marquee-title {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-style: italic;
+  font-size: clamp(5rem, 17vw, 20rem);
+  line-height: 0.9;
+  color: rgba(232, 228, 223, 0.07);
+  white-space: nowrap;
+  letter-spacing: -0.02em;
+  transform: translate3d(var(--marquee-x, 40vw), 0, 0);
+  will-change: transform;
+  mix-blend-mode: screen;
+}
+.credits-marquee-meta {
+  align-self: center;
+  margin-top: 1.4rem;
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 0.72rem;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: rgba(232, 228, 223, 0.28);
+  text-align: center;
+  padding: 0 1rem;
+}
+
+.credits-cartel {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.5s ease, transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.credits-cartel.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.credits-cartel-inner {
+  text-align: center;
+  max-width: 68ch;
+  padding: 0 2rem;
+}
+.credits-cartel-label {
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.68rem;
+  letter-spacing: 0.55em;
+  text-transform: uppercase;
+  color: rgba(201, 185, 154, 0.7);
+  margin-bottom: 1.6rem;
+}
+.credits-cartel-title {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-style: italic;
+  font-size: clamp(2.4rem, 6.2vw, 5.2rem);
+  line-height: 1.05;
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+  margin-bottom: 1.3rem;
+}
+.credits-cartel-creator {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 0.95rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  margin-bottom: 1.1rem;
+}
+.credits-cartel-link {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 0.7rem;
+  letter-spacing: 0.38em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  text-decoration: none;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid rgba(201, 185, 154, 0.35);
+  transition: color 0.3s ease, border-color 0.3s ease;
+}
+.credits-cartel-link:hover {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}
+
+@media (max-width: 700px) {
+  .credits-marquee-title {
+    font-size: clamp(3.5rem, 22vw, 12rem);
+  }
+  .credits-marquee-meta {
+    font-size: 0.6rem;
+    letter-spacing: 0.32em;
+  }
+  .credits-cartel-label {
+    font-size: 0.55rem;
+    letter-spacing: 0.42em;
+  }
+  .credits-cartel-creator {
+    font-size: 0.82rem;
+    letter-spacing: 0.22em;
+  }
+}
