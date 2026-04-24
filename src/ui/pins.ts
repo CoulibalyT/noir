@@ -12,10 +12,6 @@ interface PinHandle {
   expanded: boolean
 }
 
-// Half-widths in localProgress units. Pin stays fully opaque while the local
-// scroll is within ±PEAK of its anchor, then fades linearly to 0 at ±FADE.
-// Widened vs the original 0.06/0.12 so pins linger long enough to be read —
-// they sync with the camera-zoom window below (main.ts ZOOM_PEAK/ZOOM_END).
 const PEAK_HALF_WIDTH = 0.1
 const FADE_HALF_WIDTH = 0.15
 
@@ -30,7 +26,7 @@ export interface PinLayer {
   setPins: (pins: MaterialPin[], host: Object3D) => void
   update: (camera: PerspectiveCamera, localProgress: number) => void
   clear: () => void
-  // Re-render text content in the active language when the user toggles FR/EN.
+
   repaint: () => void
   dispose: () => void
 }
@@ -65,7 +61,7 @@ export function createPinLayer(container: HTMLElement, i18n: I18n): PinLayer {
     card.className = 'pin-card'
 
     if (data.description) {
-      // Expand affordance — reads as "+" collapsed, rotates to "×" when open.
+
       const toggle = document.createElement('span')
       toggle.className = 'pin-toggle'
       toggle.setAttribute('aria-hidden', 'true')
@@ -102,8 +98,6 @@ export function createPinLayer(container: HTMLElement, i18n: I18n): PinLayer {
       expanded: false,
     }
 
-    // Click toggles expanded view. Stops propagation so it doesn't interfere
-    // with scroll handlers attached to window.
     wrapper.addEventListener('click', (e) => {
       e.stopPropagation()
       handle.expanded = !handle.expanded
@@ -130,8 +124,7 @@ export function createPinLayer(container: HTMLElement, i18n: I18n): PinLayer {
 
     for (const p of active) {
       const opacity = triangleFade(localProgress, p.data.atProgress)
-      // Pins whose opacity drops to 0 lose interactivity too; otherwise they
-      // would block clicks on the audio toggle / mannequin below.
+
       if (opacity <= 0) {
         p.root.style.opacity = '0'
         p.root.style.pointerEvents = 'none'
@@ -169,8 +162,6 @@ export function createPinLayer(container: HTMLElement, i18n: I18n): PinLayer {
     root.remove()
   }
 
-  // Language toggle — rebuild text nodes in place so the pin positions and
-  // expanded state survive the switch.
   const repaint = (): void => {
     for (const p of active) {
       const data = p.data

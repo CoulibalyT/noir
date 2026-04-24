@@ -10,13 +10,7 @@ import {
 import type { WebGLRenderer } from 'three'
 import { Pass } from 'postprocessing'
 
-// Separable anamorphic bloom — threshold → 5-step ping-pong horizontal
-// Gaussian blur at half resolution → additive composite onto the input.
-// The single-pass version (AnamorphicEffect) couldn't widen the streak
-// without introducing visible banding between tap positions; ping-pong
-// grows the effective kernel geometrically without extra per-pixel cost.
-
-const VERTEX = /* glsl */ `
+const VERTEX =  `
   varying vec2 vUv;
   void main() {
     vUv = uv;
@@ -24,10 +18,7 @@ const VERTEX = /* glsl */ `
   }
 `
 
-// Soft-knee threshold — extracts bright pixels (above uThreshold) into
-// their own buffer so the blur step only streaks true highlights instead
-// of spreading the whole frame.
-const THRESHOLD_FRAG = /* glsl */ `
+const THRESHOLD_FRAG =  `
   uniform sampler2D tDiffuse;
   uniform float uThreshold;
   uniform float uKnee;
@@ -41,10 +32,7 @@ const THRESHOLD_FRAG = /* glsl */ `
   }
 `
 
-// 9-tap horizontal Gaussian (standard weights). uRadius scales how far
-// apart the taps sit — doubling it every iteration expands the effective
-// blur radius geometrically without needing a huge single-pass kernel.
-const H_BLUR_FRAG = /* glsl */ `
+const H_BLUR_FRAG =  `
   uniform sampler2D tDiffuse;
   uniform vec2 uTexel;
   uniform float uRadius;
@@ -62,7 +50,7 @@ const H_BLUR_FRAG = /* glsl */ `
   }
 `
 
-const COMBINE_FRAG = /* glsl */ `
+const COMBINE_FRAG =  `
   uniform sampler2D tDiffuse;
   uniform sampler2D tStreak;
   uniform float uStrength;
@@ -160,15 +148,11 @@ export class AnamorphicPass extends Pass {
   ): void {
     if (!inputBuffer) return
 
-    // 1. Threshold → rtA
     this.fullscreenMaterial = this.thresholdMat
     this.thresholdMat.uniforms.tDiffuse.value = inputBuffer.texture
     renderer.setRenderTarget(this.rtA)
     renderer.render(this.scene, this.camera)
 
-    // 2. Ping-pong horizontal blur. Radii double each iteration so the
-    // effective kernel width grows as 1 + 2 + 4 + 8 + 16 = 31 texels at
-    // half-res → ~60-70 texels at full res → solid anamorphic streak.
     this.fullscreenMaterial = this.blurMat
     const radii = [1, 2, 4, 8, 16]
     let src = this.rtA
@@ -182,9 +166,7 @@ export class AnamorphicPass extends Pass {
       src = dst
       dst = tmp
     }
-    // After the swap, the latest blur is in `src`.
 
-    // 3. Composite streak on top of the original input → outputBuffer
     this.fullscreenMaterial = this.combineMat
     this.combineMat.uniforms.tDiffuse.value = inputBuffer.texture
     this.combineMat.uniforms.tStreak.value = src.texture

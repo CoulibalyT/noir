@@ -7,15 +7,10 @@ export interface LookUI {
   triggerFlash: () => void
   setProgress: (progress: number) => void
   hideScrollHint: () => void
-  // Re-render the current look's strings in the active language. Called when
-  // the user toggles FR/EN from the language switcher.
+
   repaint: () => void
 }
 
-// Emit a span per character, indexed — CSS multiplies `--i` by a stagger
-// duration to cascade the reveal. Spaces become non-breaking so the layout
-// doesn't collapse when the chars are translated on the Y axis during the
-// animation.
 function splitChars(text: string): string {
   return [...text]
     .map((c, i) => {
@@ -25,8 +20,6 @@ function splitChars(text: string): string {
     .join('')
 }
 
-// Word-level split for longer strings where per-char would stagger too long.
-// Keeps the separator (· or space) inline.
 function splitWords(text: string): string {
   const tokens = text.split(/(\s+)/)
   let wordIdx = 0

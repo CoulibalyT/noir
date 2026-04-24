@@ -39,9 +39,6 @@ import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLigh
 import type { Quality } from '../quality'
 import { feature } from '../features'
 
-// Abstract "bust" silhouette — a rounded shape that reads as head+shoulders
-// without cartoon limbs. Edges blurred + alpha-feathered at the bottom so it
-// melts into the background fog instead of looking like a paper cutout.
 function makeSilhouetteTexture(variant: number): CanvasTexture {
   const canvas = document.createElement('canvas')
   canvas.width = 128
@@ -55,16 +52,13 @@ function makeSilhouetteTexture(variant: number): CanvasTexture {
   const shoulderY = headY + headR + 4
   const shoulderW = 38 + variant * 3
 
-  // Soft blur on the whole shape so it reads as presence, not geometry.
   ctx.filter = 'blur(3px)'
   ctx.fillStyle = '#000'
 
-  // Head
   ctx.beginPath()
   ctx.arc(cx, headY, headR, 0, Math.PI * 2)
   ctx.fill()
 
-  // Shoulders + torso — a single curved envelope down to canvas bottom.
   ctx.beginPath()
   ctx.moveTo(cx - shoulderW, canvas.height)
   ctx.quadraticCurveTo(cx - shoulderW * 0.85, shoulderY + 6, cx - 8, shoulderY)
@@ -73,7 +67,6 @@ function makeSilhouetteTexture(variant: number): CanvasTexture {
   ctx.closePath()
   ctx.fill()
 
-  // Fade the bottom 30% into full transparency — no hard "cutout bottom".
   ctx.filter = 'none'
   const fade = ctx.createLinearGradient(0, canvas.height * 0.65, 0, canvas.height)
   fade.addColorStop(0, 'rgba(0,0,0,0)')
@@ -92,16 +85,13 @@ function makeSilhouetteTexture(variant: number): CanvasTexture {
   return tex
 }
 
-// Backdrop — brand wall at the far end of the runway with a soft light gradient.
 function makeBackdrop(): Group {
   const group = new Group()
 
-  // Wall
   const wallMat = new MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.85 })
   const wall = new Mesh(new PlaneGeometry(18, 8), wallMat)
   group.add(wall)
 
-  // Logo-like text rendered to a canvas, added as a soft-glow plane
   const canvas = document.createElement('canvas')
   canvas.width = 1024
   canvas.height = 256
@@ -132,8 +122,6 @@ function makeBackdrop(): Group {
   return group
 }
 
-// Photographer pit — cluster of dark bodies + a per-light flash flicker driven
-// from the main loop via the returned handle list.
 interface PitFlash {
   light: PointLight
   nextFlash: number
@@ -151,19 +139,17 @@ function makePhotographerPit(): { group: Group; flashes: PitFlash[] } {
 
   const count = 14
   for (let i = 0; i < count; i++) {
-    // Photographer body (blocky silhouette, crouched/hunched)
+
     const px = (Math.random() - 0.5) * 5
     const pz = (Math.random() - 0.5) * 3
     const body = new Mesh(new BoxGeometry(0.35, 0.95, 0.35), silhouetteMat)
     body.position.set(px, 0.48, pz)
     group.add(body)
 
-    // Camera held up (small box above the body)
     const cam = new Mesh(new BoxGeometry(0.18, 0.12, 0.12), cameraBodyMat)
     cam.position.set(px + (Math.random() - 0.5) * 0.15, 1.0, pz + 0.1)
     group.add(cam)
 
-    // Per-photographer flash point light
     const light = new PointLight(0xffffff, 0, 14, 2)
     light.position.copy(cam.position)
     group.add(light)
@@ -178,8 +164,6 @@ function makePhotographerPit(): { group: Group; flashes: PitFlash[] } {
   return { group, flashes }
 }
 
-// Floating particles — slow vertical drift, additive blended so they register
-// only when passing through lit volumes. Count is quality-driven.
 function makeParticles(count: number): {
   points: Points
   update: (delta: number, time: number) => void
@@ -201,7 +185,6 @@ function makeParticles(count: number): {
   const geometry = new BufferGeometry()
   geometry.setAttribute('position', new BufferAttribute(positions, 3))
 
-  // Soft white circle sprite
   const canvas = document.createElement('canvas')
   canvas.width = 64
   canvas.height = 64
@@ -238,7 +221,7 @@ function makeParticles(count: number): {
       arr[base] += velocities[base] * delta + Math.sin(time * 0.3 + phases[i]) * 0.0002
       arr[base + 1] += velocities[base + 1] * delta
       arr[base + 2] += velocities[base + 2] * delta
-      // Wrap vertically — particles drift upward then reset near floor
+
       if (arr[base + 1] > 5.5) {
         arr[base] = (Math.random() - 0.5) * 12
         arr[base + 1] = 0
@@ -251,11 +234,7 @@ function makeParticles(count: number): {
   return { points, update }
 }
 
-// Volumetric spot cone — custom shader with view-dependent Fresnel + animated
-// 3D noise. Density peaks when the view ray is perpendicular to the cone
-// surface (looking across it, traversing the most "air"), fades when parallel.
-// Noise simulates drifting dust in the beam.
-const SPOT_CONE_VS = /* glsl */ `
+const SPOT_CONE_VS =  `
   varying vec3 vLocalPos;
   varying vec3 vWorldPos;
   varying vec3 vWorldNormal;
@@ -268,7 +247,7 @@ const SPOT_CONE_VS = /* glsl */ `
     gl_Position = projectionMatrix * viewMatrix * worldPos;
   }
 `
-const SPOT_CONE_FS = /* glsl */ `
+const SPOT_CONE_FS =  `
   varying vec3 vLocalPos;
   varying vec3 vWorldPos;
   varying vec3 vWorldNormal;
@@ -296,21 +275,17 @@ const SPOT_CONE_FS = /* glsl */ `
   }
 
   void main() {
-    // Height along the cone: 0 at base, 1 at apex
+
     float heightT = (vLocalPos.y + uHeight * 0.5) / uHeight;
-    // Bell peaking near the mid-upper region — transparent at apex and base
+
     float d = (heightT - 0.6) / 0.6;
     float heightBell = max(0.0, 1.0 - d * d);
 
-    // View vector in world space
     vec3 viewDir = normalize(cameraPosition - vWorldPos);
-    // Fresnel — peaks when view perpendicular to surface (= most volume to
-    // traverse). Pulls the cone's hard edges toward zero density.
+
     float fresnel = 1.0 - abs(dot(viewDir, vWorldNormal));
     fresnel = pow(fresnel, 1.4);
 
-    // Slow drifting dust. Upward coordinate advances with time so the noise
-    // "falls through" the cone — reads as particles lit by the beam.
     float n = vnoise(vWorldPos * 0.9 + vec3(0.0, -uTime * 0.25, 0.0));
     n = 0.7 + n * 0.4;
 
@@ -355,8 +330,7 @@ export interface RunwayLights {
   rimRight: SpotLight
   backLight: PointLight
   flashLight: PointLight
-  // Overhead rectangular wash aligned to the T-bar crossbar. Off by default,
-  // main.ts ramps it up during the finale so the whole lineup reads at once.
+
   finaleWash: RectAreaLight
 }
 
@@ -373,8 +347,7 @@ export interface RunwayContext {
 
 export function createRunway(container: HTMLElement, quality: Quality): RunwayContext {
   const scene = new Scene()
-  // Denser exponential fog — the audience needs to dissolve into haze at
-  // its back rows, not read as sharp silhouettes all the way out.
+
   scene.fog = new FogExp2(0x0a0a0a, 0.065)
   scene.background = new Color(0x0a0a0a)
 
@@ -393,18 +366,13 @@ export function createRunway(container: HTMLElement, quality: Quality): RunwayCo
   renderer.outputColorSpace = SRGBColorSpace
   container.appendChild(renderer.domElement)
 
-  // Expose HalfFloatType for postprocessing to import statically; runtime value only needed there.
   void HalfFloatType
 
-  // Runway floor — Reflector on high-tier, plain metallic plane on low-tier.
-  // The extra scene pass Reflector costs is the biggest mobile regression.
-  // Layout is a T: the long trunk is the walked runway, the crossbar is the
-  // finale lineup where the 4 looks end up side-by-side for the curtain call.
   const RUNWAY_LENGTH = 120
   const RUNWAY_CENTER_Z = -45
   const CROSSBAR_Z = -30
-  const CROSSBAR_WIDTH = 10 // along x — has to hold the 4 lineup stations
-  const CROSSBAR_DEPTH = 4 // along z — matches trunk width
+  const CROSSBAR_WIDTH = 10
+  const CROSSBAR_DEPTH = 4
   const runwayGeo = new PlaneGeometry(4, RUNWAY_LENGTH)
   const crossbarGeo = new PlaneGeometry(CROSSBAR_WIDTH, CROSSBAR_DEPTH)
   let runway: Mesh
@@ -424,7 +392,7 @@ export function createRunway(container: HTMLElement, quality: Quality): RunwayCo
     const floorMat = new MeshStandardMaterial({
       color: 0x0a0a0a,
       roughness: 0.2,
-      metalness: 0.7, // reads as reflective thanks to the env map
+      metalness: 0.7,
     })
     runway = new Mesh(runwayGeo, floorMat)
     runway.receiveShadow = true
@@ -435,11 +403,10 @@ export function createRunway(container: HTMLElement, quality: Quality): RunwayCo
   runway.position.set(0, 0.001, RUNWAY_CENTER_Z)
   scene.add(runway)
   crossbar.rotation.x = -Math.PI / 2
-  // Sits a hair above the trunk so the overlap seam doesn't z-fight.
+
   crossbar.position.set(0, 0.002, CROSSBAR_Z)
   scene.add(crossbar)
 
-  // Runway edges — trunk runs the full length, crossbar gets its own pair.
   const edgeMat = new MeshBasicMaterial({ color: 0x1a1a1a })
   for (const x of [-1.8, 1.8]) {
     const edge = new Mesh(new PlaneGeometry(0.01, RUNWAY_LENGTH), edgeMat)
@@ -454,20 +421,12 @@ export function createRunway(container: HTMLElement, quality: Quality): RunwayCo
     scene.add(edge)
   }
 
-  // ─── LIGHTING ───────────────────────────────────────────────────────────
-  // Cinematic catwalk rig: top-down "shower" spot, cool rim from behind,
-  // faint ambient. Physically-correct intensities (Three r155+ default).
-
-  // Ambient — bumped to reveal dark fabrics (lace, patent leather, deep
-  // satins) that would otherwise crush to pure black against the bg.
   const ambient = new AmbientLight(0x1a1e24, 0.55)
   scene.add(ambient)
 
-  // Main shower spot — straight down, tight cone, sharp shadows.
-  // Follows the mannequin via main loop (updates position.x/z and target).
   const mainSpot = new SpotLight(
-    0xfff5e6, // warm theatrical white
-    220, // intensity bumped — the spot is 11m above so falloff at ground is steep
+    0xfff5e6,
+    220,
     28,
     Math.PI / 12,
     0.15,
@@ -478,15 +437,12 @@ export function createRunway(container: HTMLElement, quality: Quality): RunwayCo
   mainSpot.shadow.mapSize.set(quality.shadowMapSize, quality.shadowMapSize)
   mainSpot.shadow.bias = -0.0005
   mainSpot.shadow.normalBias = 0.02
-  mainSpot.shadow.radius = 2 // slight PCF blur to hide stair-step edges
+  mainSpot.shadow.radius = 2
   mainSpot.shadow.camera.near = 0.5
   mainSpot.shadow.camera.far = 22
   scene.add(mainSpot)
   scene.add(mainSpot.target)
 
-  // Rim lights — behind + slightly elevated on each side, cool tone.
-  // Intensity bumped 45 → 90 so they actually carve the silhouette out of
-  // dark fabrics (lace, black satin) which previously vanished in the bg.
   const rimLeft = new SpotLight(0xb8cde0, 90, 25, Math.PI / 4, 0.75, 1.8)
   rimLeft.position.set(-5, 4.5, -22)
   rimLeft.target.position.set(0, 1.5, -10)
@@ -499,53 +455,37 @@ export function createRunway(container: HTMLElement, quality: Quality): RunwayCo
   scene.add(rimRight)
   scene.add(rimRight.target)
 
-  // Deep-distance accent, fills the fog at the far end of the runway.
   const backLight = new PointLight(0x2a2f3a, 8, 40, 1.8)
   backLight.position.set(0, 4, -35)
   scene.add(backLight)
 
-  // Camera-flash simulator (driven from main loop).
   const flashLight = new PointLight(0xffffff, 0, 15, 2)
   flashLight.position.set(2, 2, -2)
   scene.add(flashLight)
 
-  // Finale wash — rectangular softbox-style overhead panel aligned with the
-  // T-bar crossbar. Intensity stays at 0 during the walked looks; main.ts
-  // ramps it up on finaleProgress so the whole lineup reads evenly. Requires
-  // RectAreaLightUniformsLib to render correctly in WebGL.
   RectAreaLightUniformsLib.init()
   const finaleWash = new RectAreaLight(0xfff4e0, 0, CROSSBAR_WIDTH, CROSSBAR_DEPTH)
   finaleWash.position.set(0, 8, CROSSBAR_Z)
   finaleWash.lookAt(0, 0, CROSSBAR_Z)
   scene.add(finaleWash)
 
-  // ─── BACKDROP AT END OF RUNWAY ─────────────────────────────────────────
-  // Closes off the scene with a NØIR HAUS brand wall. Soft glow at top gives
-  // a theatrical "backlit screen" feel.
   const backdrop = makeBackdrop()
   backdrop.position.set(0, 3, RUNWAY_CENTER_Z - RUNWAY_LENGTH / 2 - 2)
   scene.add(backdrop)
 
-  // ─── PHOTOGRAPHER PIT ──────────────────────────────────────────────────
   const pitPosition = new Vector3(0, 0, RUNWAY_CENTER_Z - RUNWAY_LENGTH / 2 + 4)
   const { group: photographerPit, flashes: pitFlashes } = makePhotographerPit()
   photographerPit.position.copy(pitPosition)
   if (feature('pitflashes')) scene.add(photographerPit)
 
-  // ─── FLOATING PARTICLES ────────────────────────────────────────────────
   const { points: particles, update: updateParticles } = makeParticles(
     quality.particleCount,
   )
   if (feature('particles')) scene.add(particles)
 
-  // ─── VOLUMETRIC SPOT CONE ──────────────────────────────────────────────
   const { mesh: spotCone, update: updateSpotConeShader } = makeSpotCone()
   if (feature('cone')) scene.add(spotCone)
 
-  // Audience — four rows of seated silhouettes each side, covering the whole
-  // runway length from before the first look station to past the last. Uses
-  // InstancedMesh (3 instanced draws per side, one per silhouette variant) so
-  // ~600 total seats don't hurt the frame budget.
   const silhouetteTextures = [0, 1, 2].map(makeSilhouetteTexture)
   const silhouetteGeo = new PlaneGeometry(1.0, 1.3)
 
@@ -553,9 +493,6 @@ export function createRunway(container: HTMLElement, quality: Quality): RunwayCo
   const AUDIENCE_END_Z = -95
   const AUDIENCE_LENGTH = AUDIENCE_START_Z - AUDIENCE_END_Z
 
-  // Progressive rows — trimmed to quality.audienceRowCount so low-tier gets
-  // just the close rows (which matter visually) and skips the expensive far
-  // rows that the fog eats anyway.
   const allRows = [
     { xOffset: 2.3, scale: 1.0, spacing: 0.85 },
     { xOffset: 3.0, scale: 0.97, spacing: 0.9 },
@@ -573,9 +510,6 @@ export function createRunway(container: HTMLElement, quality: Quality): RunwayCo
   const rows = allRows.slice(0, quality.audienceRowCount)
   const AUDIENCE_Y = 0.85
 
-  // Bucket every seat by which silhouette variant it uses; one InstancedMesh
-  // per variant. Each seat gets a random phase so the crowd breathes/sways
-  // incoherently — reads as "living crowd" without looking choreographed.
   interface Seat {
     x: number
     y: number
@@ -622,11 +556,11 @@ export function createRunway(container: HTMLElement, quality: Quality): RunwayCo
       map: silhouetteTextures[v],
       transparent: true,
       alphaTest: 0.02,
-      opacity: 0.55, // lower → crowd reads as haze, not a wall of cardboard
-      color: 0x0d0d10, // barely distinguishable from fog tint
+      opacity: 0.55,
+      color: 0x0d0d10,
       depthWrite: false,
       side: DoubleSide,
-      fog: true, // let the scene fog eat the back rows (default but explicit)
+      fog: true,
     })
     const instanced = new InstancedMesh(silhouetteGeo, mat, seats.length)
     for (let i = 0; i < seats.length; i++) {
@@ -643,8 +577,8 @@ export function createRunway(container: HTMLElement, quality: Quality): RunwayCo
     audienceLayers.push({ mesh: instanced, seats })
   }
 
-  const SWAY_AMPLITUDE = 0.07 // radians of gentle rotation
-  const BREATH_AMPLITUDE = 0.025 // meters of vertical drift
+  const SWAY_AMPLITUDE = 0.07
+  const BREATH_AMPLITUDE = 0.025
   const SWAY_FREQ = 0.45
   const BREATH_FREQ = 0.65
 
@@ -665,8 +599,7 @@ export function createRunway(container: HTMLElement, quality: Quality): RunwayCo
   }
 
   const updateSpotCone = (time: number): void => {
-    // Attach the cone between the spot light and its target (floor). Since the
-    // spot follows the mannequin (main.ts), the cone rides along.
+
     const spot = mainSpot
     const target = mainSpot.target.position
     const mid = new Vector3()

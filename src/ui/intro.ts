@@ -4,11 +4,6 @@ export interface IntroController {
   dispose: () => void
 }
 
-// Split title text into per-char spans with a stagger index as a CSS var,
-// so the CSS keyframe animation can self-delay each character. Building the
-// DOM (not tweening) is the only JS work — the actual animation runs on the
-// compositor thread and stays smooth even while the main thread is busy
-// decoding the HDR and compiling Three.js shaders.
 function splitTitle(text: string): string {
   let charIndex = 0
   return [...text]
@@ -44,10 +39,6 @@ export function createIntro(): IntroController {
   titleEl.innerHTML = splitTitle(titleEl.textContent ?? '')
   seasonEl.innerHTML = splitWords(seasonEl.textContent ?? '')
 
-  // Toggle the "playing" state — CSS animations trigger off this class so
-  // nothing runs before the DOM is primed. Adding the class on next frame
-  // guarantees the initial (off-screen) values were painted first and the
-  // transition-from state is well-defined.
   requestAnimationFrame(() => {
     el.classList.add('intro-playing')
   })
@@ -64,7 +55,7 @@ export function createIntro(): IntroController {
     dismiss: () => {
       if (dismissed) return
       dismissed = true
-      // Let the user catch the 100% moment, then fade the whole poster.
+
       pendingTimeoutId = window.setTimeout(() => {
         el.classList.add('hidden')
         pendingTimeoutId = null

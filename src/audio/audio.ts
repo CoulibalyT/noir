@@ -1,26 +1,19 @@
-// Procedural sound design — pure Web Audio, no samples. The /sounds/ folder
-// is intentionally empty so the project stays self-contained: drone and
-// shutter are synthesised on the fly with OscillatorNode + BufferSource
-// white noise. Keeps the bundle small, the vibe cohesive, and avoids a
-// licensing trail.
+
 
 export interface AudioManager {
   isMuted: () => boolean
   toggle: () => boolean
-  // Called each frame with the scroll-driven walk phase. Triggers a heel
-  // click on every π-crossing (one strike per half-cycle).
+
   update: (walkPhase: number) => void
-  // Triggered at look transitions (camera flash moment).
+
   playFlash: () => void
-  // Accent sting when the finale curtain-call opens.
+
   playFinale: () => void
   dispose: () => void
 }
 
 export function createAudio(): AudioManager {
-  // AudioContext is lazily created so the constructor doesn't trip browser
-  // autoplay policies (we'd get a console warning). It only wakes up when
-  // the user toggles sound on for the first time.
+
   let ctx: AudioContext | null = null
   let masterGain: GainNode | null = null
   let ambientStop: (() => void) | null = null
@@ -36,7 +29,7 @@ export function createAudio(): AudioManager {
     masterGain = ctx.createGain()
     masterGain.gain.value = 0.85
     masterGain.connect(ctx.destination)
-    // Pre-build a 2-second white noise buffer reused by every shutter burst.
+
     const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate)
     const ch = buf.getChannelData(0)
     for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1
@@ -44,8 +37,6 @@ export function createAudio(): AudioManager {
     return ctx
   }
 
-  // Deep runway drone — two low sines beating against each other, lowpass
-  // filter with slow LFO on cutoff so the hum breathes. Mixes to -18dB.
   const startAmbient = (): (() => void) => {
     if (!ctx || !masterGain) return () => {}
     const now = ctx.currentTime
@@ -70,7 +61,7 @@ export function createAudio(): AudioManager {
 
     const osc2 = ctx.createOscillator()
     osc2.type = 'sine'
-    osc2.frequency.value = 82.5 // perfect fifth above — slight dissonance
+    osc2.frequency.value = 82.5
     osc2.connect(lowpass)
     osc2.start(now)
 
@@ -83,11 +74,9 @@ export function createAudio(): AudioManager {
     padGain.connect(lowpass)
     pad.start(now)
 
-    // Slow breathing — LFO modulates the filter cutoff ± a semitone over
-    // 12 seconds. Gives the drone a living, breathing quality.
     const lfo = ctx.createOscillator()
     lfo.type = 'sine'
-    lfo.frequency.value = 0.083 // 12s period
+    lfo.frequency.value = 0.083
     const lfoGain = ctx.createGain()
     lfoGain.gain.value = 110
     lfo.connect(lfoGain)
@@ -105,15 +94,13 @@ export function createAudio(): AudioManager {
     }
   }
 
-  // Camera shutter — white noise burst through a bandpass with a sharp
-  // envelope. Two layers: a bright "click" (2.5kHz) + a "thud" tail (400Hz).
   const playShutter = (): void => {
     if (!ctx || !masterGain || !whiteNoiseBuffer) return
     const t = ctx.currentTime
 
     const src = ctx.createBufferSource()
     src.buffer = whiteNoiseBuffer
-    // Randomise start offset so repeated flashes don't sound identical.
+
     src.playbackRate.value = 0.95 + Math.random() * 0.1
 
     const click = ctx.createBiquadFilter()
@@ -150,9 +137,6 @@ export function createAudio(): AudioManager {
     src2.stop(t + 0.16)
   }
 
-  // Heel click — short, wooden. Bandpass at ~1.8kHz with very fast decay,
-  // plus a tiny low thud for weight. Quieter than the shutter so the walk
-  // stays a background texture.
   const playHeel = (): void => {
     if (!ctx || !masterGain || !whiteNoiseBuffer) return
     const t = ctx.currentTime
@@ -174,12 +158,11 @@ export function createAudio(): AudioManager {
     src.stop(t + 0.06)
   }
 
-  // Finale sting — slow sweeping pad that resolves to a minor chord.
   const playFinale = (): void => {
     if (!ctx || !masterGain) return
     const t = ctx.currentTime
 
-    const notes = [165, 196, 247] // E3, G3, B3 — minor triad
+    const notes = [165, 196, 247]
     const filter = ctx.createBiquadFilter()
     filter.type = 'lowpass'
     filter.frequency.setValueAtTime(300, t)
@@ -217,7 +200,7 @@ export function createAudio(): AudioManager {
       ambientStop = null
     } else {
       ensureCtx()
-      // Resume the ctx if it's suspended (first user gesture).
+
       ctx?.resume()
       if (!ambientStop) ambientStop = startAmbient()
     }

@@ -1,5 +1,5 @@
 export interface Quality {
-  // Overall device tier. Most decisions branch off this.
+
   tier: 'low' | 'high'
   pixelRatio: number
   shadowMapSize: number
@@ -11,9 +11,7 @@ export interface Quality {
   postFxChromatic: boolean
   postFxNoise: boolean
   postFxVignette: boolean
-  // User has asked the OS to cut back animations. We freeze camera shake,
-  // audience sway, particle drift. CSS handles DOM-level animations via a
-  // media query.
+
   reducedMotion: boolean
 }
 
@@ -24,7 +22,6 @@ export function detectQuality(): Quality {
   const memory = (navigator as unknown as { deviceMemory?: number }).deviceMemory ?? 8
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-  // Low tier: mobile, or desktop with few cores / low memory.
   const isLow = isMobile || cores < 4 || memory < 4
 
   if (isLow) {

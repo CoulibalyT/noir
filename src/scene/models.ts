@@ -307,10 +307,6 @@ function createProceduralMannequin(outfit: OutfitDefinition): {
   return { group, parts }
 }
 
-// Silk shimmer injection — adds a view-dependent golden sheen on top of the
-// baked PBR. As the camera orbits, the jacquard picks up a moving highlight,
-// reading as real woven silk catching the spot. Applied to the wonsam's
-// brocart/satin materials.
 const SILK_SHEEN_COLOR = new Color(0xffd28c)
 function injectSilkShimmer(mat: MeshStandardMaterial): void {
   mat.onBeforeCompile = (shader) => {
@@ -348,10 +344,6 @@ function injectSilkShimmer(mat: MeshStandardMaterial): void {
   }
 }
 
-// Native iridescence via Three's KHR_materials_iridescence support — promotes
-// a MeshStandardMaterial to MeshPhysicalMaterial in place and sets the
-// thin-film parameters. Avoids the onBeforeCompile path that broke the
-// renderer on transparent + skinned lace materials.
 function applyNativeIridescence(mesh: Mesh, mat: Material): void {
   let physical: MeshPhysicalMaterial
   if (mat instanceof MeshPhysicalMaterial) {
@@ -359,8 +351,7 @@ function applyNativeIridescence(mesh: Mesh, mat: Material): void {
   } else if (mat instanceof MeshStandardMaterial) {
     physical = new MeshPhysicalMaterial()
     physical.copy(mat)
-    // Swap on the mesh — the old reference might be shared with other meshes
-    // that we don't want to upgrade, so we only replace this mesh's pointer.
+
     if (Array.isArray(mesh.material)) {
       const arr = mesh.material as Material[]
       const idx = arr.indexOf(mat)
@@ -371,17 +362,12 @@ function applyNativeIridescence(mesh: Mesh, mat: Material): void {
   } else {
     return
   }
-  physical.iridescence = 0.5 // overall strength
-  physical.iridescenceIOR = 1.3 // soap-film-like refractive index
-  physical.iridescenceThicknessRange = [100, 380] // nm — bigger range = wider color sweep
+  physical.iridescence = 0.5
+  physical.iridescenceIOR = 1.3
+  physical.iridescenceThicknessRange = [100, 380]
   physical.needsUpdate = true
 }
 
-// Tune PBR materials coming out of CLO3D so they actually look like the fabric
-// type they represent. CLO bakes reasonable baseColor / normal / metallicRoughness
-// maps, but their envMapIntensity + roughness are often conservative, leaving
-// satin looking like paper. We adjust by matching the material name to a
-// category (naming convention is stable across CLO exports).
 function tuneCloMaterials(root: Object3D): void {
   const categories: Array<{
     test: RegExp
@@ -390,19 +376,19 @@ function tuneCloMaterials(root: Object3D): void {
     metalness?: number
     clearcoat?: number
   }> = [
-    // Patent leather / plastic — mirror-like
+
     { test: /plastic|patent|PU|cuir.verni/i, envMapIntensity: 2.0, roughnessMul: 0.5, metalness: 0 },
-    // Satin (CLO's default shiny fabric shader)
+
     { test: /satin|duchesse/i, envMapIntensity: 1.6, roughnessMul: 0.8, metalness: 0 },
-    // Silk / brocart (Korean garment names fall here too)
+
     { test: /silk|soie|brocart|치마|원삼|색동|흉배|한삼|띠/i, envMapIntensity: 1.2, roughnessMul: 0.9, metalness: 0 },
-    // Lace — light, airy, some micro-reflection
+
     { test: /lace|dentelle|organza|tulle/i, envMapIntensity: 1.0, roughnessMul: 1.0, metalness: 0 },
-    // Wool / cotton / tweed — matte
+
     { test: /wool|laine|cotton|coton|tweed|mohair|cashmere|cachemire/i, envMapIntensity: 0.4, metalness: 0 },
-    // Skin — subtle subsurface feel (no real SSS, but low reflection + clearcoat helps)
+
     { test: /skin|face|body|arm|leg|mara/i, envMapIntensity: 0.5, clearcoat: 0.2 },
-    // Metal / hardware (belts, buckles)
+
     { test: /metal|gold|silver|buckle/i, envMapIntensity: 1.5, metalness: 1 },
   ]
 
@@ -419,10 +405,6 @@ function tuneCloMaterials(root: Object3D): void {
       }
       if (pbr.envMapIntensity === undefined) continue
 
-      // CLO exports some fabrics (lace, organza, snow motifs) with KHR_materials
-      // _transmission. Three.js renders transmission via a separate pass that
-      // we don't set up, so transmission > 0 ends up making the mesh render as
-      // invisible. Force to 0; we fake "sheer" via opacity/alphaMap instead.
       if (pbr.transmission !== undefined && pbr.transmission > 0) {
         pbr.transmission = 0
         pbr.thickness = 0
@@ -442,14 +424,13 @@ function tuneCloMaterials(root: Object3D): void {
         pbr.clearcoat = rule.clearcoat
       }
 
-      // Silk shimmer via onBeforeCompile (works on the wonsam, opt-in).
       if (
         feature('shimmer', false) &&
         /silk|soie|brocart|satin|duchesse|치마|원삼|색동|흉배|한삼|띠/i.test(name)
       ) {
         injectSilkShimmer(pbr as MeshStandardMaterial)
       }
-      // Iridescence via Three's native MeshPhysicalMaterial.iridescence.
+
       if (feature('iridescence') && /lace|dentelle|organza|tulle/i.test(name)) {
         applyNativeIridescence(mesh, pbr as Material)
       }
@@ -466,9 +447,7 @@ function fitToHeight(root: Object3D, targetHeight = 1.8): void {
     const scale = targetHeight / size.y
     root.scale.multiplyScalar(scale)
     const newBox = new Box3().setFromObject(root)
-    // Center on the X/Z axes (catches CLO drape exports that simulated
-    // asymmetrically and would otherwise sit off the runway centerline) and
-    // ground on Y.
+
     const center = newBox.getCenter(new Vector3())
     root.position.x -= center.x
     root.position.z -= center.z
@@ -526,9 +505,7 @@ async function tryLoadGltf(
         let walkLoopDuration = 1
 
         if (gltf.animations && gltf.animations.length > 0) {
-          // Prefer a clip explicitly named "walk"; otherwise pick the longest
-          // non-"Transition" clip — in CLO exports the actual walk cycle is
-          // several seconds long while "Transition" is a 1s pose-to-pose.
+
           const named = gltf.animations.find((a) => /walk/i.test(a.name))
           const candidates = gltf.animations
             .filter((a) => a.tracks.length > 0 && !/^transition$/i.test(a.name))
@@ -545,9 +522,6 @@ async function tryLoadGltf(
             walkAction.play()
             walkAction.paused = true
 
-            // CLO clips begin with a T-pose → first-frame transition. Skip the
-            // first second so the rest position and the scrolling playhead
-            // both land inside the looping walk portion.
             const skip = /t-?pose/i.test(walkClip.name) ? 1.0 : 0
             walkLoopStart = Math.min(skip, Math.max(walkClip.duration - 0.5, 0))
             walkLoopDuration = Math.max(walkClip.duration - walkLoopStart, 0.1)
@@ -598,8 +572,8 @@ export async function buildMannequins(
       fitToHeight(group, targetHeight)
 
       if (look.hideFloatingProps) {
-        const FLOAT_HORIZ_THRESHOLD = 1.0 // meters off body axis
-        const FLOAT_Y_MIN = 1.2 // only cull props above torso height
+        const FLOAT_HORIZ_THRESHOLD = 1.0
+        const FLOAT_Y_MIN = 1.2
         const tmpBox = new Box3()
         const tmpCenter = new Vector3()
         group.traverse((obj) => {
@@ -607,9 +581,7 @@ export async function buildMannequins(
           if (!mesh.isMesh) return
           tmpBox.setFromObject(mesh)
           tmpBox.getCenter(tmpCenter)
-          // Group is at world (0,0,0) at this point; center is effectively
-          // model-local. Hide anything drifting above the torso AND far from
-          // the body's vertical axis.
+
           const horizDist = Math.sqrt(
             tmpCenter.x * tmpCenter.x + tmpCenter.z * tmpCenter.z,
           )

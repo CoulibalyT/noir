@@ -1,7 +1,4 @@
-// Tiny i18n layer. Two languages for now — French (default, brand voice)
-// and English (accessibility for non-French visitors). Language is persisted
-// in localStorage, defaulted from navigator.language, and broadcast to
-// subscribers so any renderer can react to a switch without reload.
+
 
 export type Lang = 'fr' | 'en'
 
@@ -12,9 +9,6 @@ export interface Localized {
 
 export const SUBMISSION_EMAIL = 'coulibaly.tene00@gmail.com'
 
-// All UI chrome strings live here. Translating a string = add a new row.
-// Per-look editorial copy lives with each look in data/looks.ts because it
-// sits next to the rest of the look definition.
 const DICT = {
   'intro.defile': { fr: 'Défilé', en: 'Runway' },
   'intro.season': { fr: 'Automne — Hiver 2026', en: 'Fall — Winter 2026' },
@@ -71,7 +65,7 @@ function detectDefaultLang(): Lang {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored === 'fr' || stored === 'en') return stored
   } catch {
-    // localStorage unavailable (private mode / sandbox) — fall through.
+
   }
   const nav = (navigator.language || '').toLowerCase()
   return nav.startsWith('fr') ? 'fr' : 'en'
@@ -90,7 +84,6 @@ export function createI18n(): I18n {
   let lang: Lang = detectDefaultLang()
   const subscribers = new Set<(lang: Lang) => void>()
 
-  // Keep <html lang="…"> honest for screen readers and search engines.
   const syncDocument = (): void => {
     document.documentElement.setAttribute('lang', lang)
   }
@@ -102,7 +95,7 @@ export function createI18n(): I18n {
     try {
       localStorage.setItem(STORAGE_KEY, lang)
     } catch {
-      // No-op if storage is locked down.
+
     }
     syncDocument()
     subscribers.forEach((cb) => cb(lang))

@@ -17,8 +17,7 @@ export interface FinaleController {
   show: (looks: Look[]) => void
   hide: () => void
   isActive: () => boolean
-  // Re-render strings in the active language — called when the user toggles
-  // FR/EN while the overlay is visible.
+
   repaint: () => void
   dispose: () => void
 }
@@ -127,7 +126,6 @@ export function createFinale(i18n: I18n, onReplay: () => void): FinaleController
     overlay.classList.add('visible')
     overlay.setAttribute('aria-hidden', 'false')
 
-    // Clean any prior timeline so re-entering the finale replays cleanly.
     openTl?.kill()
 
     const creditItems = Array.from(creditsList.querySelectorAll('.finale-credit'))

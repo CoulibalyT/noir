@@ -2,8 +2,7 @@
   --color-bg: #0a0a0a;
   --color-text: #e8e4df;
   --color-accent: #c9b99a;
-  /* 0.55 alpha hits ~5.3:1 contrast on the background — passes WCAG AA
-     for normal text while still reading as muted vs --color-text. */
+
   --color-muted: rgba(232, 228, 223, 0.55);
   --font-display: 'Cormorant Garamond', serif;
   --font-body: 'Outfit', sans-serif;
@@ -15,8 +14,6 @@
   box-sizing: border-box;
 }
 
-/* Keyboard focus — visible outline for all interactive elements.
-   Only triggers on keyboard nav (not mouse click) thanks to :focus-visible. */
 button:focus-visible,
 [tabindex]:focus-visible,
 a:focus-visible {
@@ -37,9 +34,6 @@ a:focus-visible {
   outline-offset: 2px;
 }
 
-/* Respect OS-level "Reduce motion" — cuts animations, transitions, and the
-   pulsing scroll hint. The JS side (quality.reducedMotion) additionally
-   freezes camera shake + audience sway + particle drift. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -74,7 +68,6 @@ html.no-scroll {
   .cursor-dot { display: none !important; }
 }
 
-/* Custom cursor */
 .cursor-ring {
   position: fixed;
   width: 12px;
@@ -127,7 +120,6 @@ canvas { display: block; }
   pointer-events: none;
 }
 
-/* Brand header */
 .brand {
   top: 40px;
   left: 50%;
@@ -155,7 +147,6 @@ canvas { display: block; }
   animation: fadeIn 2s ease 1s forwards;
 }
 
-/* Season tag */
 .season-tag {
   bottom: 40px;
   left: 40px;
@@ -170,7 +161,6 @@ canvas { display: block; }
   animation: fadeIn 2s ease 1.5s forwards;
 }
 
-/* Look counter */
 .look-counter {
   bottom: 40px;
   right: 40px;
@@ -193,7 +183,6 @@ canvas { display: block; }
   color: var(--color-muted);
 }
 
-/* Look info panel */
 .look-info {
   top: 50%;
   right: 60px;
@@ -207,9 +196,9 @@ canvas { display: block; }
   font-style: italic;
   font-size: 1.8rem;
   color: var(--color-text);
-  /* 3d transforms on the children need perspective on the container. */
+
   perspective: 600px;
-  /* Preserve the right-aligned wrapping when each char is inline-block. */
+
   display: block;
 }
 .look-info .look-fabric {
@@ -239,8 +228,6 @@ canvas { display: block; }
   transform: translateY(0);
 }
 
-/* Per-character reveal on the look name — 3d flip + rise, staggered with
-   `--i` so every letter lands 35ms after the previous one. */
 .look-info .look-name .char {
   display: inline-block;
   opacity: 0;
@@ -256,8 +243,6 @@ canvas { display: block; }
   transform: translateY(0) rotateX(0);
 }
 
-/* Word-level reveal on the fabric line — quicker stagger because the line
-   is broken into · separators that a per-char stagger would drag out. */
 .look-info .look-fabric .word {
   display: inline-block;
   opacity: 0;
@@ -265,7 +250,7 @@ canvas { display: block; }
   transition:
     opacity 0.45s ease,
     transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
-  /* Fabric words start after the name finishes roughly (name length × 35ms). */
+
   transition-delay: calc(280ms + var(--i, 0) * 55ms);
 }
 .look-info.visible .look-fabric .word {
@@ -273,7 +258,6 @@ canvas { display: block; }
   transform: translateY(0);
 }
 
-/* Scroll indicator */
 .scroll-hint {
   bottom: 40px;
   left: 50%;
@@ -303,11 +287,6 @@ canvas { display: block; }
   animation: scrollPulse 2s ease infinite;
 }
 
-/* Intro overlay — kinetic poster.
-   A GSAP timeline in ui/intro.ts orchestrates the reveals: per-char stagger
-   on the title, banner lines drawing out from the center label, corner
-   metadata fading in last. The progress bar doubles as a typographic
-   element anchored bottom-center. */
 .intro-overlay {
   position: fixed;
   inset: 0;
@@ -386,10 +365,7 @@ canvas { display: block; }
 .intro-title .char--space {
   width: 0.35em;
 }
-/* Compositor-driven stagger. --char-index is set inline per span in intro.ts;
-   the animation-delay derivative gives the same visual cadence as the old
-   GSAP timeline (35ms per char) but runs off the main thread, so it no
-   longer stutters while Three.js initialises. */
+
 .intro-playing .intro-title .char {
   animation: introCharIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: calc(var(--char-index, 0) * 35ms);
@@ -513,7 +489,6 @@ canvas { display: block; }
   text-align: left;
 }
 
-/* Flash (camera strobe overlay) */
 .flash {
   position: fixed;
   inset: 0;
@@ -527,7 +502,6 @@ canvas { display: block; }
   opacity: 0.8;
 }
 
-/* Material pins — anchored on the 3D model, clickable to expand */
 .pin-layer {
   position: fixed;
   inset: 0;
@@ -579,7 +553,7 @@ canvas { display: block; }
   position: absolute;
   top: -10px;
   left: 18px;
-  padding: 10px 32px 10px 14px; /* extra right padding reserves room for toggle */
+  padding: 10px 32px 10px 14px;
   border-left: 1px solid var(--color-accent);
   white-space: nowrap;
   backdrop-filter: blur(3px);
@@ -607,7 +581,7 @@ canvas { display: block; }
   transform-origin: center;
 }
 .pin.expanded .pin-toggle {
-  transform: rotate(45deg); /* + becomes × */
+  transform: rotate(45deg);
 }
 .pin:hover .pin-card {
   background: rgba(10, 10, 10, 0.45);
@@ -672,7 +646,6 @@ canvas { display: block; }
   .pin.expanded .pin-description { max-width: 220px; font-size: 0.65rem; }
 }
 
-/* Progress bar */
 .progress-bar {
   position: fixed;
   top: 0;
@@ -684,7 +657,6 @@ canvas { display: block; }
   transition: width 0.1s linear;
 }
 
-/* Debug HUD */
 .debug-hud {
   position: fixed;
   top: 90px;
@@ -703,7 +675,6 @@ canvas { display: block; }
   max-width: 320px;
 }
 
-/* Audio toggle */
 .audio-toggle {
   position: fixed;
   top: 40px;
@@ -739,8 +710,6 @@ canvas { display: block; }
   color: var(--color-text);
 }
 
-/* Language switcher — sits to the LEFT of the audio button (same y axis,
-   same aesthetic) so the header's right edge reads as a matching pair. */
 .lang-toggle {
   position: fixed;
   top: 40px;
@@ -848,11 +817,6 @@ canvas { display: block; }
   }
 }
 
-/* ──────────────────────────── FINALE ───────────────────────────
-   Curtain-call state, triggered when the user reaches the end of the
-   last look. The overlay composes over the 3D scene (semi-transparent
-   gradient top/bottom + generous inset so the mannequin lineup behind
-   it stays visible). Replay button scrolls back to the first look. */
 .finale-overlay {
   position: fixed;
   inset: 0;
@@ -996,9 +960,7 @@ a.finale-credit-meta:hover {
   color: var(--color-text);
   letter-spacing: 0.42em;
 }
-/* Submit block — editorial invitation for creators to send in their own
-   work. Bordered frame so it reads as a distinct "call" inside the finale,
-   not a sibling credit row. */
+
 .finale-submit {
   margin-top: 2.2rem;
   padding: 1.6rem 1.8rem;
@@ -1092,7 +1054,6 @@ a.finale-credit-meta:hover {
   .finale-credit { grid-template-columns: 44px 1fr; }
 }
 
-/* Toast shown when a poster is exported (keyboard "P"). */
 .poster-toast {
   position: fixed;
   bottom: 44px;
@@ -1118,13 +1079,6 @@ a.finale-credit-meta:hover {
   transform: translate(-50%, 0);
 }
 
-/* ───────────────────────────── CREDITS ─────────────────────────────
-   Two-layer attribution system:
-   - .credits-marquee: persistent giant title that parallaxes horizontally
-     with the local scroll progress of each look. Sits behind the mannequin
-     as editorial decor, reveals attribution without yelling it.
-   - .credits-cartel: full-screen credit card faded in during dissolve
-     transitions. The loud moment — title, creator, platform link. */
 .credits-marquee {
   position: fixed;
   inset: 0;

@@ -13,16 +13,14 @@ interface CreditEntry {
 const creditsMap = credits as Record<string, CreditEntry>
 
 export interface CreditsUI {
-  // Called every frame with the active look + its local scroll progress
-  // (0..1). Drives the giant horizontal-parallax title behind the runway.
+
   updateMarquee: (look: Look, localProgress: number) => void
-  // Fade in the full-screen credit card during a look transition.
+
   showCartel: (look: Look) => void
   hideCartel: () => void
-  // Initialise the marquee for the first look without waiting for scroll.
+
   showFirstLook: (look: Look) => void
-  // Explicitly hide the parallax title — used during the finale where a
-  // look-specific headline would clash with the group lineup.
+
   hideMarquee: () => void
 }
 
@@ -40,10 +38,7 @@ export function createCreditsUI(i18n: I18n): CreditsUI {
 
   const setMarqueeContent = (look: Look): void => {
     const c = creditsMap[look.id]
-    // Title falls back to the look name so the marquee never reads as empty —
-    // credits are progressively filled, we shouldn't wait for the json to be
-    // complete before the editorial layer kicks in. Credits titles (asset
-    // names) stay as the creator set them; look names are localized.
+
     const title = c?.title ?? i18n.localize(look.name)
     const creator = c?.creator ?? null
     const platform = c?.platform ?? null
@@ -53,9 +48,7 @@ export function createCreditsUI(i18n: I18n): CreditsUI {
         ? `${creator} · ${platform}`
         : creator
       : ''
-    // Only reveal the marquee once we have at least a title to show — every
-    // look has a name so this is effectively always true, but the guard keeps
-    // the door open for a future "hide marquee when null" policy.
+
     marqueeEl.classList.toggle('visible', Boolean(title))
   }
 
@@ -64,17 +57,14 @@ export function createCreditsUI(i18n: I18n): CreditsUI {
       setMarqueeContent(look)
       currentMarqueeId = look.id
     }
-    // Parallax: the title enters from the right at progress=0 and exits to
-    // the left at progress=1. Range is wider than 100vw because the text
-    // itself is huge (often overflows the viewport).
+
     const x = 50 - localProgress * 180
     marqueeEl.style.setProperty('--marquee-x', `${x}vw`)
   }
 
   const showCartel = (look: Look): void => {
     const c = creditsMap[look.id]
-    // Without a creator the cartel has nothing meaningful to say — skip it
-    // silently rather than showing a half-empty card.
+
     if (!c?.creator) {
       cartelEl.classList.remove('visible')
       return
@@ -104,8 +94,7 @@ export function createCreditsUI(i18n: I18n): CreditsUI {
 
   const hideMarquee = (): void => {
     marqueeEl.classList.remove('visible')
-    // Force a re-sync next time updateMarquee runs so the marquee comes back
-    // with fresh content if the user replays.
+
     currentMarqueeId = ''
   }
 

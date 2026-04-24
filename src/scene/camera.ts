@@ -3,20 +3,14 @@ import { gsap } from 'gsap'
 import ScrollTrigger from 'gsap/ScrollTrigger'
 import { LOOKS_SCROLL_END, SCROLL_PER_LOOK, TOTAL_LOOKS } from '../data/looks'
 
-// Fixed subject placement — each look sits on its own station along the runway.
 export const LOOK_BASE_Z = -4
 export const LOOK_Z_SPACING = 18
 export const ORBIT_RADIUS = 2.9
 export const CAMERA_HEIGHT = 1.45
 export const LOOK_AT_HEIGHT = 1.3
 
-// Fraction of each look's scroll range spent on the linear approach before
-// the orbit kicks in. 0.1 = first 10% of scroll walks toward the subject —
-// short, since the user wants to be on the model fast.
 export const APPROACH_FRACTION = 0.1
-// Camera Z distance from the subject at the very start of the approach.
-// Was 10m which made the mannequin small + dim at the entry view; 5m gets
-// the mannequin to ~40% of the screen height immediately.
+
 export const APPROACH_START_DIST = 5
 
 export function subjectZForLook(index: number): number {
@@ -32,8 +26,7 @@ export interface ScrollState {
   walkPhase: number
   currentLook: number
   localProgress: number
-  // 0 until the user scrolls past the last look, then ramps 0→1 across the
-  // finale slice. Drives the horizontal pan + close-up on the crossbar.
+
   finaleProgress: number
 }
 
@@ -70,8 +63,6 @@ export function createCameraRig(reducedMotion = false): CameraRig {
     finaleProgress: 0,
   }
 
-  // maxTouchPoints > 0 is the reliable signal for a real touchscreen
-  // (macOS Safari exposes 'ontouchstart' in window even without a touchscreen).
   const isTouch = navigator.maxTouchPoints > 0
 
   let scrollTrigger: ScrollTrigger | null = null
@@ -99,7 +90,7 @@ export function createCameraRig(reducedMotion = false): CameraRig {
   }
 
   if (isTouch) {
-    // Touch devices: disable native scroll, drive progress from touch + wheel.
+
     document.documentElement.classList.add('no-scroll')
     document.body.classList.add('no-scroll')
     const sc = document.getElementById('scroll-container')
@@ -108,7 +99,7 @@ export function createCameraRig(reducedMotion = false): CameraRig {
     window.addEventListener('touchmove', onTouchMove, { passive: false })
     window.addEventListener('wheel', onWheel, { passive: false })
   } else {
-    // Desktop: let the page scroll natively; ScrollTrigger observes progress.
+
     scrollTrigger = ScrollTrigger.create({
       trigger: '#scroll-container',
       start: 'top top',
@@ -144,16 +135,8 @@ export function createCameraRig(reducedMotion = false): CameraRig {
           )
         : 0
 
-    // NB: orbit still runs during finaleProgress > 0 so main.ts can lerp
-    // the camera from the last orbit pose to the finale pan without a snap.
-
-    // Two-phase per look: (1) linear approach toward the subject, then
-    // (2) 360° orbit around it. Camera Z is continuous at the handoff —
-    // orbit starts at angle 0 (front, z = subject + radius) which is exactly
-    // where the approach ends.
     const subjectZ = subjectZForLook(scrollState.currentLook)
 
-    // Hand-held breathing — zeroed if the user asked to cut motion.
     if (reducedMotion) {
       cameraShake.set(0, 0, 0)
     } else {

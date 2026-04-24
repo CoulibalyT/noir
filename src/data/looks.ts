@@ -31,22 +31,20 @@ export interface OutfitDefinition {
 }
 
 export interface LookAccessories {
-  // When true, attach a procedural neck + head on top of the GLB (for garments
-  // exported as drape-only, without a body underneath).
+
   head?: boolean
 }
 
 export interface MaterialPin {
-  // Label shown on the pin (e.g. "Brocart impérial"). Bilingual.
+
   label: Localized
-  // Optional secondary line under the label.
+
   detail?: Localized
-  // Long description revealed when the pin is clicked/expanded.
+
   description?: Localized
-  // Anchor point in model-local coordinates (meters, after fitToHeight).
-  // Origin is at the feet, y up, z+ facing the camera at start of orbit.
+
   anchor: [number, number, number]
-  // Where in the look's local scroll range (0..1) this pin peaks.
+
   atProgress: number
 }
 
@@ -58,15 +56,11 @@ export interface Look {
   lighting: LookLighting
   outfit: OutfitDefinition
   model?: string
-  // Override for GLB fit height. Defaults to 1.8 (full figure). Use a shorter
-  // value (e.g. 1.48) when attaching a procedural head above the garment.
+
   modelHeight?: number
   accessories?: LookAccessories
   pins?: MaterialPin[]
-  // Hide meshes whose bounding-box center sits more than ~1m off the body's
-  // vertical axis after fitToHeight. Use for CLO exports where unrigged
-  // props/ornaments (Korean hair pieces, accessories) float away from the
-  // re-rigged body. Leaves the core avatar + garment meshes intact.
+
   hideFloatingProps?: boolean
 }
 
@@ -316,9 +310,7 @@ export const LOOKS: Look[] = [
 ]
 
 export const TOTAL_LOOKS = LOOKS.length
-// Last slice of scroll is reserved for the finale: mannequins gather on the
-// T-bar crossbar and the camera travels horizontally across the lineup as
-// the user keeps scrolling. Everything before that is the per-look walk.
+
 export const FINALE_SCROLL_FRACTION = 0.2
 export const SCROLL_PER_LOOK = (1 - FINALE_SCROLL_FRACTION) / TOTAL_LOOKS
 export const LOOKS_SCROLL_END = TOTAL_LOOKS * SCROLL_PER_LOOK
