@@ -19,6 +19,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 import type { Look, OutfitDefinition } from '../data/looks'
 import { feature } from '../features'
+import { subjectZForLook } from './camera'
 
 export interface MannequinParts {
   upperBody: Group
@@ -547,7 +548,7 @@ export async function buildMannequins(
 
   for (let i = 0; i < looks.length; i++) {
     const look = looks[i]
-    const startZ = -(15 + i * 20)
+    const startZ = subjectZForLook(i)
     let group: Group
     let parts: MannequinParts | null = null
     let mixer: AnimationMixer | null = null
@@ -597,7 +598,7 @@ export async function buildMannequins(
     }
 
     group.position.set(0, 0, startZ)
-    group.visible = false
+    group.visible = i === 0
     scene.add(group)
 
     entries.push({
