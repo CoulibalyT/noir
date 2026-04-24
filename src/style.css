@@ -287,6 +287,38 @@ canvas { display: block; }
   animation: scrollPulse 2s ease infinite;
 }
 
+.poster-hint {
+  top: 40px;
+  left: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  animation: fadeIn 2s ease 3s forwards;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+.poster-hint-key {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: var(--color-accent);
+  background: transparent;
+  border: 1px solid var(--color-accent);
+  padding: 4px 9px;
+  min-width: 22px;
+  text-align: center;
+}
+.poster-hint-label {
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 0.52rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
 .intro-overlay {
   position: fixed;
   inset: 0;

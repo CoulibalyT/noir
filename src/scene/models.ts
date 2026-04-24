@@ -374,6 +374,7 @@ function tuneCloMaterials(root: Object3D): void {
     test: RegExp
     envMapIntensity?: number
     roughnessMul?: number
+    roughness?: number
     metalness?: number
     clearcoat?: number
   }> = [
@@ -389,6 +390,8 @@ function tuneCloMaterials(root: Object3D): void {
     { test: /wool|laine|cotton|coton|tweed|mohair|cashmere|cachemire/i, envMapIntensity: 0.4, metalness: 0 },
 
     { test: /skin|face|body|arm|leg|mara/i, envMapIntensity: 0.5, clearcoat: 0.2 },
+
+    { test: /hair|cheveux|wig/i, envMapIntensity: 0.25, roughness: 0.82, metalness: 0 },
 
     { test: /metal|gold|silver|buckle/i, envMapIntensity: 1.5, metalness: 1 },
   ]
@@ -420,6 +423,7 @@ function tuneCloMaterials(root: Object3D): void {
       if (rule.roughnessMul !== undefined) {
         pbr.roughness = Math.min(Math.max(pbr.roughness * rule.roughnessMul, 0.02), 1)
       }
+      if (rule.roughness !== undefined) pbr.roughness = rule.roughness
       if (rule.metalness !== undefined) pbr.metalness = rule.metalness
       if (rule.clearcoat !== undefined && 'clearcoat' in pbr) {
         pbr.clearcoat = rule.clearcoat

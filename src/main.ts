@@ -413,6 +413,7 @@ function frame(): void {
   if (!quality.reducedMotion) {
     runway.updateAudience(time)
     runway.updateParticles(delta, time)
+    runway.updatePhones(delta, time)
   }
   runway.updatePitFlashes(delta)
   runway.updateSpotCone(time)

@@ -6,8 +6,10 @@ import {
   BufferAttribute,
   BufferGeometry,
   CanvasTexture,
+  CircleGeometry,
   Color,
   ConeGeometry,
+  CylinderGeometry,
   DoubleSide,
   Euler,
   FogExp2,
@@ -31,6 +33,7 @@ import {
   ShaderMaterial,
   SpotLight,
   SRGBColorSpace,
+  TorusGeometry,
   Vector3,
   WebGLRenderer,
 } from 'three'
@@ -234,6 +237,193 @@ function makeParticles(count: number): {
   return { points, update }
 }
 
+function makeOverheadTruss(): Group {
+  const group = new Group()
+  const metalMat = new MeshStandardMaterial({
+    color: 0x2a2a2a,
+    roughness: 0.35,
+    metalness: 0.9,
+    envMapIntensity: 1.2,
+  })
+  const housingMat = new MeshStandardMaterial({
+    color: 0x1a1a1a,
+    roughness: 0.25,
+    metalness: 0.85,
+    envMapIntensity: 1.1,
+  })
+  const lensMat = new MeshStandardMaterial({
+    color: 0x050505,
+    roughness: 0.15,
+    metalness: 0.95,
+    envMapIntensity: 1.3,
+  })
+
+  const TRUSS_Y = 6.3
+  const TRUSS_LENGTH = 120
+  const TRUSS_CENTER_Z = -45
+  const BEAM_X = 2.4
+
+  const beamGeo = new CylinderGeometry(0.07, 0.07, TRUSS_LENGTH, 10)
+  for (const side of [-1, 1] as const) {
+    const beam = new Mesh(beamGeo, metalMat)
+    beam.position.set(side * BEAM_X, TRUSS_Y, TRUSS_CENTER_Z)
+    beam.rotation.x = Math.PI / 2
+    group.add(beam)
+  }
+
+  const braceGeo = new CylinderGeometry(0.04, 0.04, BEAM_X * 2, 8)
+  const braceStart = TRUSS_CENTER_Z - TRUSS_LENGTH / 2 + 3
+  const braceEnd = TRUSS_CENTER_Z + TRUSS_LENGTH / 2 - 3
+  const braceCount = Math.floor((braceEnd - braceStart) / 5)
+  for (let i = 0; i < braceCount; i++) {
+    const z = braceStart + i * 5
+    const brace = new Mesh(braceGeo, metalMat)
+    brace.position.set(0, TRUSS_Y, z)
+    brace.rotation.z = Math.PI / 2
+    group.add(brace)
+  }
+
+  const stemGeo = new CylinderGeometry(0.016, 0.016, 0.35, 6)
+  const yokeGeo = new TorusGeometry(0.11, 0.012, 6, 16, Math.PI)
+  const bodyGeo = new CylinderGeometry(0.095, 0.115, 0.22, 20, 1, true)
+  const backGeo = new CylinderGeometry(0.095, 0.095, 0.04, 16)
+  const lensGeo = new CircleGeometry(0.09, 24)
+  const bezelGeo = new TorusGeometry(0.093, 0.008, 6, 20)
+
+  const FIXTURE_SPACING = 3.8
+  const fixtureStart = TRUSS_CENTER_Z - TRUSS_LENGTH / 2 + 3
+  const fixtureEnd = TRUSS_CENTER_Z + TRUSS_LENGTH / 2 - 3
+  const fixtureCount = Math.floor((fixtureEnd - fixtureStart) / FIXTURE_SPACING)
+  for (let i = 0; i < fixtureCount; i++) {
+    const z = fixtureStart + i * FIXTURE_SPACING
+    const x = (i % 2 === 0 ? 1 : -1) * (BEAM_X * 0.55)
+
+    const fixture = new Group()
+    fixture.position.set(x, TRUSS_Y - 0.38, z)
+    const tilt = 0.2 + Math.random() * 0.1
+    const pan = (Math.random() - 0.5) * 0.35
+    fixture.rotation.set(tilt, pan, 0)
+
+    const stem = new Mesh(stemGeo, metalMat)
+    stem.position.set(0, 0.24, 0)
+    fixture.add(stem)
+
+    const yoke = new Mesh(yokeGeo, metalMat)
+    yoke.position.set(0, 0.06, 0)
+    yoke.rotation.x = Math.PI / 2
+    fixture.add(yoke)
+
+    const body = new Mesh(bodyGeo, housingMat)
+    body.rotation.x = Math.PI / 2
+    fixture.add(body)
+
+    const back = new Mesh(backGeo, housingMat)
+    back.position.set(0, 0, -0.11)
+    back.rotation.x = Math.PI / 2
+    fixture.add(back)
+
+    const lens = new Mesh(lensGeo, lensMat)
+    lens.position.set(0, 0, 0.111)
+    fixture.add(lens)
+
+    const bezel = new Mesh(bezelGeo, metalMat)
+    bezel.position.set(0, 0, 0.111)
+    fixture.add(bezel)
+
+    group.add(fixture)
+  }
+
+  return group
+}
+
+interface PhoneState {
+  x: number
+  y: number
+  z: number
+  intensity: number
+  cooldown: number
+  nextOn: number
+  duration: number
+}
+
+function makeAudiencePhones(): {
+  mesh: InstancedMesh
+  update: (delta: number, time: number) => void
+} {
+  const COUNT = 36
+  const geo = new PlaneGeometry(0.07, 0.12)
+  const mat = new MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    blending: AdditiveBlending,
+    depthWrite: false,
+    side: DoubleSide,
+    toneMapped: false,
+  })
+  const mesh = new InstancedMesh(geo, mat, COUNT)
+  mesh.frustumCulled = false
+
+  const phones: PhoneState[] = []
+  for (let i = 0; i < COUNT; i++) {
+    const side = Math.random() < 0.5 ? -1 : 1
+    const row = Math.floor(Math.random() * 5)
+    const rowX = 2.5 + row * 0.9
+    phones.push({
+      x: side * (rowX + Math.random() * 0.4),
+      y: 1.0 + Math.random() * 0.35,
+      z: 4 - Math.random() * 90,
+      intensity: 0,
+      cooldown: 0,
+      nextOn: Math.random() * 10,
+      duration: 0,
+    })
+  }
+
+  const matrix = new Matrix4()
+  const pos = new Vector3()
+  const quat = new Quaternion()
+  const scale = new Vector3(1, 1, 1)
+  const color = new Color()
+
+  for (let i = 0; i < COUNT; i++) {
+    const p = phones[i]
+    pos.set(p.x, p.y, p.z)
+    quat.setFromEuler(new Euler(0, p.x > 0 ? -Math.PI / 2 : Math.PI / 2, 0))
+    matrix.compose(pos, quat, scale)
+    mesh.setMatrixAt(i, matrix)
+    mesh.setColorAt(i, color.setRGB(0, 0, 0))
+  }
+  mesh.instanceMatrix.needsUpdate = true
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
+
+  const update = (delta: number, time: number): void => {
+    for (let i = 0; i < COUNT; i++) {
+      const p = phones[i]
+      if (p.duration > 0) {
+        p.duration -= delta
+        const remaining = Math.max(0, p.duration)
+        const fadeIn = Math.min(1, (p.cooldown - p.duration) / 0.3)
+        const fadeOut = Math.min(1, remaining / 0.4)
+        p.intensity = 0.85 * fadeIn * fadeOut
+        if (p.duration <= 0) {
+          p.intensity = 0
+          p.duration = 0
+          p.nextOn = time + 4 + Math.random() * 18
+        }
+      } else if (time >= p.nextOn) {
+        p.duration = 1.8 + Math.random() * 3.5
+        p.cooldown = p.duration
+      }
+      const warm = (i % 3) * 0.08
+      color.setRGB(p.intensity, p.intensity * (0.88 - warm), p.intensity * (0.72 - warm * 1.5))
+      mesh.setColorAt(i, color)
+    }
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
+  }
+
+  return { mesh, update }
+}
+
 const SPOT_CONE_VS =  `
   varying vec3 vLocalPos;
   varying vec3 vWorldPos;
@@ -342,6 +532,7 @@ export interface RunwayContext {
   updatePitFlashes: (delta: number) => void
   updateParticles: (delta: number, time: number) => void
   updateSpotCone: (time: number) => void
+  updatePhones: (delta: number, time: number) => void
   dispose: () => void
 }
 
@@ -485,6 +676,11 @@ export function createRunway(container: HTMLElement, quality: Quality): RunwayCo
 
   const { mesh: spotCone, update: updateSpotConeShader } = makeSpotCone()
   if (feature('cone')) scene.add(spotCone)
+
+  if (feature('truss')) scene.add(makeOverheadTruss())
+
+  const { mesh: phoneMesh, update: updatePhones } = makeAudiencePhones()
+  if (feature('phones')) scene.add(phoneMesh)
 
   const silhouetteTextures = [0, 1, 2].map(makeSilhouetteTexture)
   const silhouetteGeo = new PlaneGeometry(1.0, 1.3)
@@ -653,6 +849,7 @@ export function createRunway(container: HTMLElement, quality: Quality): RunwayCo
     updatePitFlashes,
     updateParticles,
     updateSpotCone,
+    updatePhones,
     dispose,
   }
 }

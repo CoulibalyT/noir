@@ -22,6 +22,8 @@ export type FeatureKey =
   | 'pitflashes'
   | 'anamorphic'
   | 'grade'
+  | 'truss'
+  | 'phones'
 
 export function feature(key: FeatureKey, defaultValue = true): boolean {
   if (only !== null) return key === only
@@ -49,6 +51,8 @@ const allKeys: FeatureKey[] = [
   'pitflashes',
   'anamorphic',
   'grade',
+  'truss',
+  'phones',
 ]
 const summary = allKeys
   .map((k) => `${k}=${feature(k, !offByDefault.has(k)) ? 'on' : 'off'}`)

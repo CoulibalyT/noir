@@ -71,6 +71,11 @@ const DICT = {
     fr: 'Nøir Haus · Paris · AW 26',
     en: 'Nøir Haus · Paris · AW 26',
   },
+
+  'poster.hint': {
+    fr: 'Capturer l’affiche',
+    en: 'Capture the poster',
+  },
 } as const
 
 export type StringKey = keyof typeof DICT
