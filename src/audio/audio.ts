@@ -134,29 +134,34 @@ export function createAudio(): AudioManager {
 
     const src = ctx.createBufferSource()
     src.buffer = whiteNoiseBuffer
-    src.playbackRate.value = 0.95 + Math.random() * 0.1
+    src.playbackRate.value = 0.55 + Math.random() * 0.15
+    src.loop = true
 
-    const click = ctx.createBiquadFilter()
-    click.type = 'bandpass'
-    click.frequency.value = 2200
-    click.Q.value = 8
+    const lowpass = ctx.createBiquadFilter()
+    lowpass.type = 'lowpass'
+    lowpass.frequency.setValueAtTime(280, t)
+    lowpass.frequency.exponentialRampToValueAtTime(1200, t + 0.35)
+    lowpass.frequency.exponentialRampToValueAtTime(220, t + 1.4)
+    lowpass.Q.value = 0.9
 
-    const clickGain = ctx.createGain()
-    clickGain.gain.setValueAtTime(0, t)
-    clickGain.gain.linearRampToValueAtTime(0.14, t + 0.006)
-    clickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.11)
+    const dryGain = ctx.createGain()
+    dryGain.gain.setValueAtTime(0, t)
+    dryGain.gain.linearRampToValueAtTime(0.05, t + 0.4)
+    dryGain.gain.exponentialRampToValueAtTime(0.001, t + 1.6)
 
-    src.connect(click)
-    click.connect(clickGain)
-    clickGain.connect(masterGain)
+    const wetGain = ctx.createGain()
+    wetGain.gain.setValueAtTime(0, t)
+    wetGain.gain.linearRampToValueAtTime(0.07, t + 0.5)
+    wetGain.gain.exponentialRampToValueAtTime(0.001, t + 2.4)
 
-    const tail = ctx.createGain()
-    tail.gain.value = 0.45
-    clickGain.connect(tail)
-    tail.connect(reverbBus)
+    src.connect(lowpass)
+    lowpass.connect(dryGain)
+    dryGain.connect(masterGain)
+    lowpass.connect(wetGain)
+    wetGain.connect(reverbBus)
 
     src.start(t)
-    src.stop(t + 0.13)
+    src.stop(t + 1.7)
   }
 
   const playHeel = (): void => {

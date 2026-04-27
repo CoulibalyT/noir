@@ -63,6 +63,15 @@ html.no-scroll {
   overflow: hidden;
 }
 
+body.in-finale .look-info,
+body.in-finale .scroll-hint,
+body.in-finale .credits-marquee,
+body.in-finale .credits-cartel {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.6s ease;
+}
+
 @media (pointer: coarse) {
   body { cursor: auto; }
   .cursor-ring,
@@ -703,13 +712,25 @@ canvas { display: block; }
 
 .progress-bar {
   position: fixed;
-  top: 0;
+  bottom: 0;
   left: 0;
-  height: 1px;
-  background: linear-gradient(to right, transparent, var(--color-accent), transparent);
+  height: 2px;
+  background: linear-gradient(to right, transparent 0%, var(--color-accent) 30%, var(--color-accent) 70%, transparent 100%);
+  box-shadow: 0 0 14px rgba(201, 185, 154, 0.4);
   z-index: 20;
   width: 0%;
   transition: width 0.1s linear;
+}
+.progress-bar::after {
+  content: '';
+  position: absolute;
+  right: -3px;
+  top: -2px;
+  width: 6px;
+  height: 6px;
+  background: var(--color-accent);
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(201, 185, 154, 0.9);
 }
 
 

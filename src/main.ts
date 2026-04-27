@@ -169,6 +169,7 @@ void mannequinsPromise.then((entries) => {
 const timer = new Timer()
 
 let prevLook = -1
+let displayedLookIdx = 0
 let audienceFlashTimer = 0
 
 const FINALE_LINEUP_X = [-3.3, -1.1, 1.1, 3.3]
@@ -261,6 +262,7 @@ function playLookTransition(toIdx: number): void {
   if (!feature('transition') || sinceLast < RAPID_THRESHOLD_MS) {
 
     creditsUI.hideCartel()
+    displayedLookIdx = toIdx
     snapLookState(toIdx, look)
     const rapidPins = LOOKS[toIdx].pins
     const rapidMannequin = mannequins[toIdx]
@@ -303,6 +305,7 @@ function playLookTransition(toIdx: number): void {
       audio.playFlash()
       flashBloomReact()
       runway.lights.flashLight.intensity = 7
+      displayedLookIdx = toIdx
       snapLookState(toIdx, look, false)
       lookUI.swapContent(toIdx, look)
       const nextPins = LOOKS[toIdx].pins
@@ -501,9 +504,9 @@ function frame(): void {
   }
 
   for (let i = 0; i < mannequins.length; i++) {
-    mannequins[i].group.visible = finaleEngaged || i === state.currentLook
+    mannequins[i].group.visible = finaleEngaged || i === displayedLookIdx
   }
-  const currentMannequin = mannequins[state.currentLook]
+  const currentMannequin = mannequins[displayedLookIdx]
   if (finaleEngaged) {
 
     const washBlend = smoothstep(0, FINALE_SLIDE_END, state.finaleProgress)
@@ -547,20 +550,24 @@ function frame(): void {
   if (finaleEngaged) {
     creditsUI.hideMarquee()
     creditsUI.hideCartel()
+    document.body.classList.add('in-finale')
+    pinLayer.setVisible(false)
   } else if (scrollLockProgress !== null) {
     creditsUI.hideMarquee()
   } else {
     creditsUI.updateMarquee(LOOKS[state.currentLook], state.localProgress)
+    document.body.classList.remove('in-finale')
   }
 
   if (currentMannequin && feature('zoom')) {
-    applyPinZoom(state.localProgress, currentMannequin, LOOKS[state.currentLook].pins)
+    applyPinZoom(state.localProgress, currentMannequin, LOOKS[displayedLookIdx].pins)
   }
 
   if (state.currentLook !== prevLook) {
     if (prevLook < 0) {
 
       const look = LOOKS[state.currentLook]
+      displayedLookIdx = state.currentLook
       runway.lights.rimLeft.color.setHex(look.lighting.accent)
       runway.lights.rimRight.color.setHex(look.lighting.accent)
       runway.lights.mainSpot.color.setHex(look.lighting.spotColor)

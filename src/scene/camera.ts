@@ -111,6 +111,26 @@ export function createCameraRig(reducedMotion = false): CameraRig {
         scrollState.target = self.progress
       },
     })
+
+    const MAX_AHEAD = 0.06
+    let lastScrollClamp = 0
+    window.addEventListener(
+      'scroll',
+      () => {
+        const now = performance.now()
+        if (now - lastScrollClamp < 60) return
+        const sc = document.getElementById('scroll-container')
+        if (!sc) return
+        const total = sc.offsetHeight - window.innerHeight
+        if (total <= 0) return
+        const desired = (scrollState.progress + MAX_AHEAD) * total
+        if (window.scrollY > desired + 4) {
+          lastScrollClamp = now
+          window.scrollTo({ top: desired, behavior: 'auto' })
+        }
+      },
+      { passive: true },
+    )
   }
   window.addEventListener('resize', onResize)
 
@@ -121,7 +141,15 @@ export function createCameraRig(reducedMotion = false): CameraRig {
     const dt = prevTime > 0 ? Math.min(time - prevTime, 0.1) : 1 / 60
     prevTime = time
 
+    const MAX_AHEAD = 0.06
     const prevProgress = scrollState.progress
+    const ahead = scrollState.target - prevProgress
+    if (ahead > MAX_AHEAD) {
+      scrollState.target = prevProgress + MAX_AHEAD
+    } else if (ahead < -MAX_AHEAD) {
+      scrollState.target = prevProgress - MAX_AHEAD
+    }
+
     const lerped = lerp(scrollState.progress, scrollState.target, 0.035)
     const maxStep = MAX_PROGRESS_PER_SECOND * dt
     const requested = lerped - prevProgress
