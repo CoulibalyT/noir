@@ -1,0 +1,22 @@
+{
+  "headers": [
+    {
+      "source": "/(assets|hdri|models|sounds)/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(.*).(glb|gltf|bin|exr|hdr|ktx2|png|jpg|jpeg|webp|avif|woff2|mp3|ogg)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ]
+}

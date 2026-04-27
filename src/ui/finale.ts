@@ -1,7 +1,7 @@
 import { gsap } from 'gsap'
 import credits from '../data/credits.json'
 import type { Look } from '../data/looks'
-import { SUBMISSION_EMAIL, type I18n } from '../i18n'
+import { AUTHOR_NAME, AUTHOR_PORTFOLIO, SUBMISSION_EMAIL, type I18n } from '../i18n'
 
 interface CreditEntry {
   creator: string | null
@@ -45,6 +45,14 @@ export function createFinale(i18n: I18n, onReplay: () => void): FinaleController
         <p class="finale-submit-body" data-finale-i18n="submitBody"></p>
         <a class="finale-submit-cta" id="finale-submit-cta" data-finale-i18n="submitCta"></a>
       </div>
+      <div class="finale-author" data-finale-el>
+        <span class="finale-author-label" data-finale-i18n="authorLabel"></span>
+        <span class="finale-author-name">${AUTHOR_NAME}</span>
+        <span class="finale-author-sep">·</span>
+        <a class="finale-author-link" href="${AUTHOR_PORTFOLIO}" target="_blank" rel="noopener noreferrer" data-finale-i18n="authorPortfolio"></a>
+        <span class="finale-author-sep">·</span>
+        <a class="finale-author-link" href="mailto:${SUBMISSION_EMAIL}" data-finale-i18n="authorContact"></a>
+      </div>
       <div class="finale-cta" data-finale-el>
         <button type="button" class="finale-replay" id="finale-replay">
           <span class="finale-replay-line"></span>
@@ -81,6 +89,12 @@ export function createFinale(i18n: I18n, onReplay: () => void): FinaleController
       i18n.t('finale.replay')
     overlay.querySelector('[data-finale-i18n="footer"]')!.textContent =
       i18n.t('finale.footer')
+    overlay.querySelector('[data-finale-i18n="authorLabel"]')!.textContent =
+      i18n.t('finale.author.label')
+    overlay.querySelector('[data-finale-i18n="authorPortfolio"]')!.textContent =
+      i18n.t('finale.author.portfolio')
+    overlay.querySelector('[data-finale-i18n="authorContact"]')!.textContent =
+      i18n.t('finale.author.contact')
     const subj = i18n.get() === 'fr' ? MAIL_SUBJECT_FR : MAIL_SUBJECT_EN
     submitCtaEl.href = `mailto:${SUBMISSION_EMAIL}?subject=${subj}`
   }

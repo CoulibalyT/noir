@@ -35,6 +35,51 @@ export function createPoster(source: CaptureSource): PosterController {
   toast.className = 'poster-toast'
   document.body.appendChild(toast)
 
+  const overlay = document.createElement('div')
+  overlay.className = 'poster-preview'
+  overlay.setAttribute('aria-hidden', 'true')
+  overlay.innerHTML = `
+    <div class="poster-preview-backdrop"></div>
+    <figure class="poster-preview-frame">
+      <img class="poster-preview-img" alt="" />
+      <figcaption class="poster-preview-actions">
+        <a class="poster-preview-download" download></a>
+        <button class="poster-preview-close" type="button"></button>
+      </figcaption>
+    </figure>
+  `
+  document.body.appendChild(overlay)
+
+  const imgEl = overlay.querySelector('.poster-preview-img') as HTMLImageElement
+  const downloadEl = overlay.querySelector('.poster-preview-download') as HTMLAnchorElement
+  const closeEl = overlay.querySelector('.poster-preview-close') as HTMLButtonElement
+  const backdropEl = overlay.querySelector('.poster-preview-backdrop') as HTMLElement
+
+  let activeUrl: string | null = null
+  const closePreview = (): void => {
+    overlay.classList.remove('visible')
+    overlay.setAttribute('aria-hidden', 'true')
+    if (activeUrl) {
+      window.setTimeout(() => {
+        if (activeUrl) URL.revokeObjectURL(activeUrl)
+        activeUrl = null
+      }, 400)
+    }
+  }
+  closeEl.addEventListener('click', closePreview)
+  backdropEl.addEventListener('click', closePreview)
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && overlay.classList.contains('visible')) closePreview()
+  })
+
+  const paintOverlayLabels = (): void => {
+    closeEl.textContent = source.i18n.t('poster.close')
+    closeEl.setAttribute('aria-label', source.i18n.t('poster.close'))
+    downloadEl.textContent = source.i18n.t('poster.download')
+  }
+  paintOverlayLabels()
+  source.i18n.onChange(() => paintOverlayLabels())
+
   let busy = false
 
   const showToast = (msg: string): void => {
@@ -183,17 +228,14 @@ export function createPoster(source: CaptureSource): PosterController {
 
       const blob = await new Promise<Blob | null>((resolve) => out.toBlob(resolve, 'image/png'))
       if (!blob) throw new Error('toBlob failed')
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `noir-haus-aw26-${look.id}.png`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
+      if (activeUrl) URL.revokeObjectURL(activeUrl)
+      activeUrl = URL.createObjectURL(blob)
 
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
-
-      showToast('Affiche exportée')
+      imgEl.src = activeUrl
+      downloadEl.href = activeUrl
+      downloadEl.download = `noir-haus-aw26-${look.id}.png`
+      overlay.classList.add('visible')
+      overlay.setAttribute('aria-hidden', 'false')
     } catch (err) {
 
       console.warn('[poster] capture failed', err)
@@ -205,6 +247,10 @@ export function createPoster(source: CaptureSource): PosterController {
 
   return {
     capture,
-    dispose: () => toast.remove(),
+    dispose: () => {
+      toast.remove()
+      overlay.remove()
+      if (activeUrl) URL.revokeObjectURL(activeUrl)
+    },
   }
 }

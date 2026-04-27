@@ -15,7 +15,6 @@ export default defineConfig({
           three: ['three'],
           gsap: ['gsap', 'gsap/ScrollTrigger'],
           postprocessing: ['postprocessing'],
-          howler: ['howler'],
         },
       },
     },

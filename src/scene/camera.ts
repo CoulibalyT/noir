@@ -37,10 +37,10 @@ export interface CameraRig {
   dispose: () => void
 }
 
-const TOUCH_SENSITIVITY = 0.00045
-const WHEEL_SENSITIVITY = 0.0001
+const TOUCH_SENSITIVITY = 0.0003
+const WHEEL_SENSITIVITY = 0.00006
 
-const MAX_PROGRESS_PER_SECOND = 0.1
+const MAX_PROGRESS_PER_SECOND = 0.065
 
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t
 const clamp01 = (v: number): number => Math.max(0, Math.min(1, v))
@@ -106,7 +106,7 @@ export function createCameraRig(reducedMotion = false): CameraRig {
       trigger: '#scroll-container',
       start: 'top top',
       end: 'bottom bottom',
-      scrub: 2,
+      scrub: 3,
       onUpdate: (self) => {
         scrollState.target = self.progress
       },
@@ -122,7 +122,7 @@ export function createCameraRig(reducedMotion = false): CameraRig {
     prevTime = time
 
     const prevProgress = scrollState.progress
-    const lerped = lerp(scrollState.progress, scrollState.target, 0.05)
+    const lerped = lerp(scrollState.progress, scrollState.target, 0.035)
     const maxStep = MAX_PROGRESS_PER_SECOND * dt
     const requested = lerped - prevProgress
     if (Math.abs(requested) > maxStep) {

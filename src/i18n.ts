@@ -8,6 +8,8 @@ export interface Localized {
 }
 
 export const SUBMISSION_EMAIL = 'coulibaly.tene00@gmail.com'
+export const AUTHOR_NAME = 'Tene Coulibaly'
+export const AUTHOR_PORTFOLIO = 'https://tene-coulibaly.vercel.app/'
 
 const DICT = {
   'intro.defile': { fr: 'Défilé', en: 'Runway' },
@@ -47,6 +49,18 @@ const DICT = {
     fr: 'Envoyer votre création',
     en: 'Submit your work',
   },
+  'finale.author.label': {
+    fr: 'Créé par',
+    en: 'Created by',
+  },
+  'finale.author.portfolio': {
+    fr: 'Portfolio',
+    en: 'Portfolio',
+  },
+  'finale.author.contact': {
+    fr: 'Contact',
+    en: 'Contact',
+  },
 
   'lang.toggle.fr': { fr: 'FR', en: 'FR' },
   'lang.toggle.en': { fr: 'EN', en: 'EN' },
@@ -75,6 +89,14 @@ const DICT = {
   'poster.hint': {
     fr: 'Capturer l’affiche',
     en: 'Capture the poster',
+  },
+  'poster.close': {
+    fr: 'Fermer',
+    en: 'Close',
+  },
+  'poster.download': {
+    fr: 'Télécharger',
+    en: 'Download',
   },
 } as const
 

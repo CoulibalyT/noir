@@ -333,89 +333,131 @@ function makeOverheadTruss(): Group {
     group.add(fixture)
   }
 
+  group.traverse((obj) => {
+    obj.updateMatrix()
+    obj.matrixAutoUpdate = false
+  })
+
   return group
 }
 
-interface PhoneState {
+function makeStarSprite(): CanvasTexture {
+  const canvas = document.createElement('canvas')
+  canvas.width = 64
+  canvas.height = 64
+  const ctx = canvas.getContext('2d')
+  if (ctx) {
+    const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 28)
+    grad.addColorStop(0, 'rgba(255, 255, 255, 1)')
+    grad.addColorStop(0.25, 'rgba(255, 250, 235, 0.7)')
+    grad.addColorStop(0.55, 'rgba(255, 250, 235, 0.18)')
+    grad.addColorStop(1, 'rgba(255, 250, 235, 0)')
+    ctx.fillStyle = grad
+    ctx.fillRect(0, 0, 64, 64)
+    ctx.globalCompositeOperation = 'lighter'
+    const spikes = ctx.createLinearGradient(0, 32, 64, 32)
+    spikes.addColorStop(0, 'rgba(255, 250, 235, 0)')
+    spikes.addColorStop(0.5, 'rgba(255, 250, 235, 0.85)')
+    spikes.addColorStop(1, 'rgba(255, 250, 235, 0)')
+    ctx.strokeStyle = spikes
+    ctx.lineWidth = 1.2
+    ctx.beginPath()
+    ctx.moveTo(4, 32)
+    ctx.lineTo(60, 32)
+    ctx.stroke()
+    const spikesV = ctx.createLinearGradient(32, 0, 32, 64)
+    spikesV.addColorStop(0, 'rgba(255, 250, 235, 0)')
+    spikesV.addColorStop(0.5, 'rgba(255, 250, 235, 0.85)')
+    spikesV.addColorStop(1, 'rgba(255, 250, 235, 0)')
+    ctx.strokeStyle = spikesV
+    ctx.beginPath()
+    ctx.moveTo(32, 4)
+    ctx.lineTo(32, 60)
+    ctx.stroke()
+  }
+  const tex = new CanvasTexture(canvas)
+  tex.colorSpace = SRGBColorSpace
+  return tex
+}
+
+interface StarState {
   x: number
   y: number
   z: number
-  intensity: number
-  cooldown: number
-  nextOn: number
-  duration: number
+  base: number
+  phase: number
+  speed: number
+  hue: number
 }
 
-function makeAudiencePhones(): {
+function makeStars(): {
   mesh: InstancedMesh
   update: (delta: number, time: number) => void
 } {
-  const COUNT = 36
-  const geo = new PlaneGeometry(0.07, 0.12)
+  const COUNT = 140
+  const tex = makeStarSprite()
+  const geo = new PlaneGeometry(0.32, 0.32)
   const mat = new MeshBasicMaterial({
-    color: 0xffffff,
+    map: tex,
     transparent: true,
     blending: AdditiveBlending,
     depthWrite: false,
+    depthTest: false,
     side: DoubleSide,
     toneMapped: false,
   })
   const mesh = new InstancedMesh(geo, mat, COUNT)
   mesh.frustumCulled = false
+  mesh.renderOrder = 2
 
-  const phones: PhoneState[] = []
+  const stars: StarState[] = []
   for (let i = 0; i < COUNT; i++) {
-    const side = Math.random() < 0.5 ? -1 : 1
-    const row = Math.floor(Math.random() * 5)
-    const rowX = 2.5 + row * 0.9
-    phones.push({
-      x: side * (rowX + Math.random() * 0.4),
-      y: 1.0 + Math.random() * 0.35,
-      z: 4 - Math.random() * 90,
-      intensity: 0,
-      cooldown: 0,
-      nextOn: Math.random() * 10,
-      duration: 0,
+    const arcR = 6 + Math.random() * 22
+    const arcAngle = (Math.random() - 0.5) * Math.PI
+    const x = Math.sin(arcAngle) * arcR
+    const y = 2.5 + Math.random() * 10
+    const z = 5 - Math.random() * 110
+    stars.push({
+      x,
+      y,
+      z,
+      base: 0.35 + Math.random() * 0.55,
+      phase: Math.random() * Math.PI * 2,
+      speed: 0.4 + Math.random() * 1.1,
+      hue: Math.random(),
     })
   }
 
   const matrix = new Matrix4()
   const pos = new Vector3()
   const quat = new Quaternion()
-  const scale = new Vector3(1, 1, 1)
+  const scaleVec = new Vector3(1, 1, 1)
   const color = new Color()
 
   for (let i = 0; i < COUNT; i++) {
-    const p = phones[i]
-    pos.set(p.x, p.y, p.z)
-    quat.setFromEuler(new Euler(0, p.x > 0 ? -Math.PI / 2 : Math.PI / 2, 0))
-    matrix.compose(pos, quat, scale)
+    const s = stars[i]
+    pos.set(s.x, s.y, s.z)
+    const scl = 0.6 + Math.random() * 1.2
+    scaleVec.set(scl, scl, scl)
+    matrix.compose(pos, quat, scaleVec)
     mesh.setMatrixAt(i, matrix)
     mesh.setColorAt(i, color.setRGB(0, 0, 0))
   }
   mesh.instanceMatrix.needsUpdate = true
   if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
 
-  const update = (delta: number, time: number): void => {
+  const update = (_delta: number, time: number): void => {
     for (let i = 0; i < COUNT; i++) {
-      const p = phones[i]
-      if (p.duration > 0) {
-        p.duration -= delta
-        const remaining = Math.max(0, p.duration)
-        const fadeIn = Math.min(1, (p.cooldown - p.duration) / 0.3)
-        const fadeOut = Math.min(1, remaining / 0.4)
-        p.intensity = 0.85 * fadeIn * fadeOut
-        if (p.duration <= 0) {
-          p.intensity = 0
-          p.duration = 0
-          p.nextOn = time + 4 + Math.random() * 18
-        }
-      } else if (time >= p.nextOn) {
-        p.duration = 1.8 + Math.random() * 3.5
-        p.cooldown = p.duration
-      }
-      const warm = (i % 3) * 0.08
-      color.setRGB(p.intensity, p.intensity * (0.88 - warm), p.intensity * (0.72 - warm * 1.5))
+      const s = stars[i]
+      const pulse = 0.5 + 0.5 * Math.sin(time * s.speed + s.phase)
+      const intensity = s.base * Math.pow(pulse, 3)
+      const warm = s.hue > 0.65 ? 0.06 : 0
+      const cool = s.hue < 0.35 ? 0.08 : 0
+      color.setRGB(
+        intensity * (1 - cool * 0.5),
+        intensity * (1 - cool * 0.2 - warm * 0.15),
+        intensity * (1 + cool - warm * 0.4),
+      )
       mesh.setColorAt(i, color)
     }
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
@@ -532,7 +574,7 @@ export interface RunwayContext {
   updatePitFlashes: (delta: number) => void
   updateParticles: (delta: number, time: number) => void
   updateSpotCone: (time: number) => void
-  updatePhones: (delta: number, time: number) => void
+  updateStars: (delta: number, time: number) => void
   dispose: () => void
 }
 
@@ -553,7 +595,7 @@ export function createRunway(container: HTMLElement, quality: Quality): RunwayCo
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = PCFSoftShadowMap
   renderer.toneMapping = ACESFilmicToneMapping
-  renderer.toneMappingExposure = 0.95
+  renderer.toneMappingExposure = 1.15
   renderer.outputColorSpace = SRGBColorSpace
   container.appendChild(renderer.domElement)
 
@@ -603,25 +645,35 @@ export function createRunway(container: HTMLElement, quality: Quality): RunwayCo
     const edge = new Mesh(new PlaneGeometry(0.01, RUNWAY_LENGTH), edgeMat)
     edge.rotation.x = -Math.PI / 2
     edge.position.set(x, 0.001, RUNWAY_CENTER_Z)
+    edge.updateMatrix()
+    edge.matrixAutoUpdate = false
     scene.add(edge)
   }
   for (const z of [CROSSBAR_Z - CROSSBAR_DEPTH / 2, CROSSBAR_Z + CROSSBAR_DEPTH / 2]) {
     const edge = new Mesh(new PlaneGeometry(CROSSBAR_WIDTH, 0.01), edgeMat)
     edge.rotation.x = -Math.PI / 2
     edge.position.set(0, 0.003, z)
+    edge.updateMatrix()
+    edge.matrixAutoUpdate = false
     scene.add(edge)
   }
 
-  const ambient = new AmbientLight(0x1a1e24, 0.55)
+  const ambient = new AmbientLight(0x232a36, 0.95)
   scene.add(ambient)
+
+  const fillLight = new SpotLight(0xfff2dc, 60, 30, Math.PI / 4, 0.85, 1.2)
+  fillLight.position.set(0, 6, -2)
+  fillLight.target.position.set(0, 1.4, -10)
+  scene.add(fillLight)
+  scene.add(fillLight.target)
 
   const mainSpot = new SpotLight(
     0xfff5e6,
-    220,
-    28,
-    Math.PI / 12,
-    0.15,
-    1.5,
+    340,
+    32,
+    Math.PI / 11,
+    0.2,
+    1.4,
   )
   mainSpot.position.set(0, 11, -10)
   mainSpot.castShadow = true
@@ -634,13 +686,13 @@ export function createRunway(container: HTMLElement, quality: Quality): RunwayCo
   scene.add(mainSpot)
   scene.add(mainSpot.target)
 
-  const rimLeft = new SpotLight(0xb8cde0, 90, 25, Math.PI / 4, 0.75, 1.8)
+  const rimLeft = new SpotLight(0xb8cde0, 130, 28, Math.PI / 4, 0.75, 1.8)
   rimLeft.position.set(-5, 4.5, -22)
   rimLeft.target.position.set(0, 1.5, -10)
   scene.add(rimLeft)
   scene.add(rimLeft.target)
 
-  const rimRight = new SpotLight(0xb8cde0, 90, 25, Math.PI / 4, 0.75, 1.8)
+  const rimRight = new SpotLight(0xb8cde0, 130, 28, Math.PI / 4, 0.75, 1.8)
   rimRight.position.set(5, 4.5, -22)
   rimRight.target.position.set(0, 1.5, -10)
   scene.add(rimRight)
@@ -662,11 +714,20 @@ export function createRunway(container: HTMLElement, quality: Quality): RunwayCo
 
   const backdrop = makeBackdrop()
   backdrop.position.set(0, 3, RUNWAY_CENTER_Z - RUNWAY_LENGTH / 2 - 2)
+  backdrop.traverse((obj) => {
+    obj.updateMatrix()
+    obj.matrixAutoUpdate = false
+  })
   scene.add(backdrop)
 
   const pitPosition = new Vector3(0, 0, RUNWAY_CENTER_Z - RUNWAY_LENGTH / 2 + 4)
   const { group: photographerPit, flashes: pitFlashes } = makePhotographerPit()
   photographerPit.position.copy(pitPosition)
+  photographerPit.traverse((obj) => {
+    if (obj.type === 'PointLight') return
+    obj.updateMatrix()
+    obj.matrixAutoUpdate = false
+  })
   if (feature('pitflashes')) scene.add(photographerPit)
 
   const { points: particles, update: updateParticles } = makeParticles(
@@ -679,8 +740,8 @@ export function createRunway(container: HTMLElement, quality: Quality): RunwayCo
 
   if (feature('truss')) scene.add(makeOverheadTruss())
 
-  const { mesh: phoneMesh, update: updatePhones } = makeAudiencePhones()
-  if (feature('phones')) scene.add(phoneMesh)
+  const { mesh: starsMesh, update: updateStars } = makeStars()
+  if (feature('stars')) scene.add(starsMesh)
 
   const silhouetteTextures = [0, 1, 2].map(makeSilhouetteTexture)
   const silhouetteGeo = new PlaneGeometry(1.0, 1.3)
@@ -849,7 +910,7 @@ export function createRunway(container: HTMLElement, quality: Quality): RunwayCo
     updatePitFlashes,
     updateParticles,
     updateSpotCone,
-    updatePhones,
+    updateStars,
     dispose,
   }
 }

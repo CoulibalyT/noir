@@ -27,6 +27,16 @@ import { createAudio } from './audio/audio'
 import { LOOKS } from './data/looks'
 import { createI18n, type StringKey } from './i18n'
 
+if ('scrollRestoration' in history) {
+  history.scrollRestoration = 'manual'
+}
+window.scrollTo(0, 0)
+window.addEventListener('beforeunload', () => window.scrollTo(0, 0))
+window.addEventListener('load', () => {
+  window.scrollTo(0, 0)
+  requestAnimationFrame(() => window.scrollTo(0, 0))
+})
+
 const container = document.getElementById('canvas-container')
 if (!container) throw new Error('#canvas-container not found')
 
@@ -66,11 +76,14 @@ const mannequinsPromise = buildMannequins(runway.scene, LOOKS, '/models')
 
 const envHandle = await createEnvironment(runway.renderer, runway.scene, {
   hdrUrl: '/hdri/photo_studio_01_4k.exr',
-  intensity: 0.8,
+  intensity: 1.1,
   useHdr: quality.useHdrEnvironment,
 })
 
 const cameraRig = createCameraRig(quality.reducedMotion)
+window.scrollTo(0, 0)
+cameraRig.scrollState.target = 0
+cameraRig.scrollState.progress = 0
 const postfx = createPostFX(runway.renderer, runway.scene, cameraRig.camera, {
   bloom: quality.postFxBloom && feature('bloom'),
   chromatic: quality.postFxChromatic && feature('chromatic'),
@@ -203,14 +216,15 @@ const dissolveUniform = postfx.dissolve.threshold
 let transitionTl: gsap.core.Timeline | null = null
 let dissolveResetTimer: number | null = null
 let lastTransitionAt = 0
-const RAPID_THRESHOLD_MS = 1200
+let scrollLockProgress: number | null = null
+const RAPID_THRESHOLD_MS = 2200
 
 function forceDissolveReset(): void {
   dissolveUniform.value = 0
 }
 
-function snapLookState(toIdx: number, look: (typeof LOOKS)[number]): void {
-  lookUI.setLook(toIdx, look)
+function snapLookState(toIdx: number, look: (typeof LOOKS)[number], includeText = true): void {
+  if (includeText) lookUI.setLook(toIdx, look)
   runway.lights.rimLeft.color.setHex(look.lighting.accent)
   runway.lights.rimRight.color.setHex(look.lighting.accent)
   runway.lights.mainSpot.color.setHex(look.lighting.spotColor)
@@ -248,8 +262,14 @@ function playLookTransition(toIdx: number): void {
 
     creditsUI.hideCartel()
     snapLookState(toIdx, look)
+    const rapidPins = LOOKS[toIdx].pins
+    const rapidMannequin = mannequins[toIdx]
+    if (rapidPins && rapidMannequin) {
+      pinLayer.setPins(rapidPins, rapidMannequin.group)
+    } else {
+      pinLayer.clear()
+    }
     if (feature('transition')) {
-
       lookUI.triggerFlash()
       audio.playFlash()
       flashBloomReact()
@@ -258,36 +278,56 @@ function playLookTransition(toIdx: number): void {
         .timeline()
         .to(runway.lights.flashLight, {
           intensity: 0,
-          duration: 0.12,
-          ease: 'power2.out',
+          duration: 0.2,
+          ease: 'sine.out',
         })
     }
     return
   }
 
+  scrollLockProgress = 1
   transitionTl = gsap
-    .timeline({ onComplete: forceDissolveReset })
-    .call(() => creditsUI.showCartel(look))
-    .to(dissolveUniform, { value: 1, duration: 0.32, ease: 'power2.in' })
+    .timeline({
+      onComplete: () => {
+        forceDissolveReset()
+        scrollLockProgress = null
+      },
+    })
+    .call(() => {
+      lookUI.fadeOut()
+      pinLayer.setVisible(false)
+    })
+    .to(dissolveUniform, { value: 1, duration: 0.85, ease: 'sine.inOut' }, 0)
     .call(() => {
       lookUI.triggerFlash()
       audio.playFlash()
       flashBloomReact()
       runway.lights.flashLight.intensity = 7
-      snapLookState(toIdx, look)
+      snapLookState(toIdx, look, false)
+      lookUI.swapContent(toIdx, look)
+      const nextPins = LOOKS[toIdx].pins
+      const nextMannequin = mannequins[toIdx]
+      if (nextPins && nextMannequin) {
+        pinLayer.setPins(nextPins, nextMannequin.group)
+      } else {
+        pinLayer.clear()
+      }
     })
     .to(runway.lights.flashLight, {
       intensity: 0,
-      duration: 0.2,
-      ease: 'power2.out',
+      duration: 0.6,
+      ease: 'sine.out',
     })
-    .to(dissolveUniform, { value: 0, duration: 0.55, ease: 'power2.out' }, '-=0.12')
-    .call(() => creditsUI.hideCartel(), [], '+=0.35')
+    .to(dissolveUniform, { value: 0, duration: 1.3, ease: 'sine.inOut' }, '+=0.35')
+    .call(() => lookUI.fadeIn(), [], '-=1.0')
+    .call(() => pinLayer.setVisible(true))
+    .call(() => creditsUI.showCartel(look))
+    .call(() => creditsUI.hideCartel(), [], '+=2.4')
 
   dissolveResetTimer = window.setTimeout(() => {
     dissolveResetTimer = null
     forceDissolveReset()
-  }, 1500)
+  }, 4500)
 }
 
 const rimToCam = new Vector3()
@@ -413,7 +453,7 @@ function frame(): void {
   if (!quality.reducedMotion) {
     runway.updateAudience(time)
     runway.updateParticles(delta, time)
-    runway.updatePhones(delta, time)
+    runway.updateStars(delta, time)
   }
   runway.updatePitFlashes(delta)
   runway.updateSpotCone(time)
@@ -507,6 +547,8 @@ function frame(): void {
   if (finaleEngaged) {
     creditsUI.hideMarquee()
     creditsUI.hideCartel()
+  } else if (scrollLockProgress !== null) {
+    creditsUI.hideMarquee()
   } else {
     creditsUI.updateMarquee(LOOKS[state.currentLook], state.localProgress)
   }
@@ -529,13 +571,6 @@ function frame(): void {
       }
     } else {
       playLookTransition(state.currentLook)
-    }
-
-    const nextPins = LOOKS[state.currentLook].pins
-    if (nextPins && currentMannequin) {
-      pinLayer.setPins(nextPins, currentMannequin.group)
-    } else {
-      pinLayer.clear()
     }
     prevLook = state.currentLook
   }

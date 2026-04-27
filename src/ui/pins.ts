@@ -12,8 +12,8 @@ interface PinHandle {
   expanded: boolean
 }
 
-const PEAK_HALF_WIDTH = 0.1
-const FADE_HALF_WIDTH = 0.15
+const PEAK_HALF_WIDTH = 0.18
+const FADE_HALF_WIDTH = 0.28
 
 function triangleFade(localProgress: number, atProgress: number): number {
   const d = Math.abs(localProgress - atProgress)
@@ -26,6 +26,7 @@ export interface PinLayer {
   setPins: (pins: MaterialPin[], host: Object3D) => void
   update: (camera: PerspectiveCamera, localProgress: number) => void
   clear: () => void
+  setVisible: (visible: boolean) => void
 
   repaint: () => void
   dispose: () => void
@@ -162,6 +163,12 @@ export function createPinLayer(container: HTMLElement, i18n: I18n): PinLayer {
     root.remove()
   }
 
+  const setVisible = (visible: boolean): void => {
+    root.style.transition = 'opacity 0.45s ease'
+    root.style.opacity = visible ? '1' : '0'
+    root.style.pointerEvents = visible ? '' : 'none'
+  }
+
   const repaint = (): void => {
     for (const p of active) {
       const data = p.data
@@ -180,5 +187,5 @@ export function createPinLayer(container: HTMLElement, i18n: I18n): PinLayer {
     }
   }
 
-  return { setPins, update, clear, repaint, dispose }
+  return { setPins, update, clear, setVisible, repaint, dispose }
 }

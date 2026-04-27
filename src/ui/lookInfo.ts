@@ -7,6 +7,9 @@ export interface LookUI {
   triggerFlash: () => void
   setProgress: (progress: number) => void
   hideScrollHint: () => void
+  fadeOut: () => void
+  swapContent: (index: number, look: Look) => void
+  fadeIn: () => void
 
   repaint: () => void
 }
@@ -62,6 +65,20 @@ export function createLookUI(i18n: I18n): LookUI {
     }, 300)
   }
 
+  const fadeOut = (): void => {
+    lookInfoEl.classList.remove('visible')
+  }
+
+  const swapContent = (index: number, look: Look): void => {
+    currentLook = look
+    lookNumEl.textContent = String(index + 1).padStart(2, '0')
+    paintLook(look)
+  }
+
+  const fadeIn = (): void => {
+    lookInfoEl.classList.add('visible')
+  }
+
   const showFirstLook = (look: Look): void => {
     currentLook = look
     paintLook(look)
@@ -89,5 +106,15 @@ export function createLookUI(i18n: I18n): LookUI {
     scrollHintEl.classList.add('hidden')
   }
 
-  return { setLook, showFirstLook, triggerFlash, setProgress, hideScrollHint, repaint }
+  return {
+    setLook,
+    showFirstLook,
+    triggerFlash,
+    setProgress,
+    hideScrollHint,
+    fadeOut,
+    swapContent,
+    fadeIn,
+    repaint,
+  }
 }
