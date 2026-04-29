@@ -280,32 +280,63 @@ canvas { display: block; }
 }
 
 .scroll-hint {
-  bottom: 40px;
+  bottom: 56px;
   left: 50%;
   transform: translateX(-50%);
   text-align: center;
   opacity: 0;
-  animation: fadeIn 2s ease 2.5s forwards;
+  animation: fadeIn 2s ease 2.5s forwards, scrollHintBob 2.6s ease-in-out 4.5s infinite;
   transition: opacity 0.6s ease;
+  z-index: 25;
 }
 .scroll-hint.hidden {
   opacity: 0 !important;
+  animation-play-state: paused;
 }
-.scroll-hint span {
+.scroll-hint .scroll-hint-main {
   font-family: var(--font-body);
-  font-weight: 300;
-  font-size: 0.58rem;
-  letter-spacing: 0.5em;
+  font-weight: 400;
+  font-size: 0.78rem;
+  letter-spacing: 0.55em;
   text-transform: uppercase;
-  color: var(--color-muted);
+  color: var(--color-accent);
   display: block;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7);
+}
+.scroll-hint .scroll-hint-sub {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-style: italic;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  color: rgba(232, 228, 223, 0.85);
+  display: block;
+  margin-top: 8px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7);
 }
 .scroll-line {
   width: 1px;
-  height: 40px;
+  height: 64px;
   background: linear-gradient(to bottom, var(--color-accent), transparent);
-  margin: 12px auto 0;
-  animation: scrollPulse 2s ease infinite;
+  margin: 16px auto 0;
+  animation: scrollPulse 1.6s ease infinite;
+  position: relative;
+}
+.scroll-line::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -3px;
+  transform: translateX(-50%) rotate(45deg);
+  width: 8px;
+  height: 8px;
+  border-right: 1px solid var(--color-accent);
+  border-bottom: 1px solid var(--color-accent);
+  box-shadow: 2px 2px 8px rgba(201, 185, 154, 0.4);
+}
+@keyframes scrollHintBob {
+  0%, 100% { transform: translate(-50%, 0); }
+  50% { transform: translate(-50%, -8px); }
 }
 
 .poster-hint {
@@ -540,6 +571,22 @@ canvas { display: block; }
   color: var(--color-muted);
   min-width: 3ch;
   text-align: left;
+}
+
+.crossfade-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+  overflow: hidden;
+  background: var(--color-bg);
+  will-change: opacity;
+}
+.crossfade-overlay canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .flash {

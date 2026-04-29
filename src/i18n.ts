@@ -21,7 +21,11 @@ const DICT = {
   'brand.subtitle': { fr: 'Automne — Hiver 2026', en: 'Fall — Winter 2026' },
   'seasonTag': { fr: 'AW26 — PARIS', en: 'AW26 — PARIS' },
 
-  'scrollHint': { fr: 'Glissez pour entrer', en: 'Scroll to enter' },
+  'scrollHint': { fr: 'Glissez doucement', en: 'Scroll slowly' },
+  'scrollHintSub': {
+    fr: 'Le défilé prend son temps',
+    en: 'The runway moves at its own pace',
+  },
 
   'audio.label': { fr: 'Son', en: 'Sound' },
   'audio.on': { fr: 'on', en: 'on' },

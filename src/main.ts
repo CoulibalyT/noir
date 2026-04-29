@@ -24,7 +24,7 @@ import { createFinale } from './ui/finale'
 import { createBackdrop } from './scene/backdrop'
 import { createPinLayer } from './ui/pins'
 import { createAudio } from './audio/audio'
-import { LOOKS } from './data/looks'
+import { LOOKS, SCROLL_PER_LOOK } from './data/looks'
 import { createI18n, type StringKey } from './i18n'
 
 if ('scrollRestoration' in history) {
@@ -80,7 +80,7 @@ const envHandle = await createEnvironment(runway.renderer, runway.scene, {
   useHdr: quality.useHdrEnvironment,
 })
 
-const cameraRig = createCameraRig(quality.reducedMotion)
+const cameraRig = createCameraRig(quality.reducedMotion, () => scrollResistance)
 window.scrollTo(0, 0)
 cameraRig.scrollState.target = 0
 cameraRig.scrollState.progress = 0
@@ -170,6 +170,145 @@ const timer = new Timer()
 
 let prevLook = -1
 let displayedLookIdx = 0
+
+let lastUserInputAt = performance.now()
+let snapAnimId: number | null = null
+let dwellLockUntil = 0
+let dwellLockProgress: number | null = null
+const SNAP_IDLE_MS = 800
+const SNAP_RADIUS = 0.22
+const SNAP_DURATION = 1200
+const DWELL_DURATION_MS = 2000
+const isTouchDevice = navigator.maxTouchPoints > 0
+
+let scrollResistance = 1
+let scrollVelocityEMA = 0
+let dimAmount = 0
+const VELOCITY_DIM_THRESHOLD = 0.0008
+const VELOCITY_DIM_SOFT = 0.0025
+
+const onUserScrollInput = (): void => {
+  lastUserInputAt = performance.now()
+  if (snapAnimId !== null) {
+    cancelAnimationFrame(snapAnimId)
+    snapAnimId = null
+  }
+}
+window.addEventListener('wheel', onUserScrollInput, { passive: true })
+window.addEventListener('touchstart', onUserScrollInput, { passive: true })
+window.addEventListener('touchmove', onUserScrollInput, { passive: true })
+window.addEventListener('keydown', (e) => {
+  if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', ' '].includes(e.key)) {
+    onUserScrollInput()
+  }
+})
+
+function tryAutoSnap(): void {
+  if (snapAnimId !== null) return
+  const state = cameraRig.scrollState
+  if (state.finaleProgress > 0) return
+  if (scrollLockProgress !== null) return
+  if (performance.now() - lastUserInputAt < SNAP_IDLE_MS) return
+
+  const lookIdx = state.currentLook
+  const pins = LOOKS[lookIdx]?.pins
+  if (!pins || pins.length === 0) return
+
+  let nextAt: number | null = null
+  let nextDist = Infinity
+  for (const p of pins) {
+    const d = p.atProgress - state.localProgress
+    if (d > 0.012 && d < nextDist) {
+      nextDist = d
+      nextAt = p.atProgress
+    }
+  }
+
+  if (nextAt === null) return
+  if (nextDist > SNAP_RADIUS) return
+
+  const targetGlobal = lookIdx * SCROLL_PER_LOOK + nextAt * SCROLL_PER_LOOK
+  const ease = (t: number): number =>
+    t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
+
+  const completeDwell = () => {
+    snapAnimId = null
+    dwellLockProgress = targetGlobal
+    dwellLockUntil = performance.now() + DWELL_DURATION_MS
+  }
+
+  if (isTouchDevice) {
+    const startTarget = state.target
+    const startTime = performance.now()
+    const step = () => {
+      const elapsed = performance.now() - startTime
+      const t = Math.min(1, elapsed / SNAP_DURATION)
+      state.target = startTarget + (targetGlobal - startTarget) * ease(t)
+      if (t < 1) snapAnimId = requestAnimationFrame(step)
+      else completeDwell()
+    }
+    snapAnimId = requestAnimationFrame(step)
+  } else {
+    const sc = document.getElementById('scroll-container')
+    if (!sc) return
+    const total = sc.offsetHeight - window.innerHeight
+    if (total <= 0) return
+    const startY = window.scrollY
+    const targetY = targetGlobal * total
+    if (Math.abs(targetY - startY) < 4) return
+    const startTime = performance.now()
+    const step = () => {
+      const elapsed = performance.now() - startTime
+      const t = Math.min(1, elapsed / SNAP_DURATION)
+      window.scrollTo(0, startY + (targetY - startY) * ease(t))
+      if (t < 1) snapAnimId = requestAnimationFrame(step)
+      else completeDwell()
+    }
+    snapAnimId = requestAnimationFrame(step)
+  }
+}
+
+function applyDwellLock(): void {
+  if (dwellLockProgress === null) return
+  const now = performance.now()
+  if (now >= dwellLockUntil) {
+    dwellLockProgress = null
+    return
+  }
+  const state = cameraRig.scrollState
+  state.target = dwellLockProgress
+  state.progress = dwellLockProgress
+  if (!isTouchDevice) {
+    const sc = document.getElementById('scroll-container')
+    if (!sc) return
+    const total = sc.offsetHeight - window.innerHeight
+    if (total <= 0) return
+    const lockY = dwellLockProgress * total
+    if (Math.abs(window.scrollY - lockY) > 4) {
+      window.scrollTo(0, lockY)
+    }
+  }
+}
+
+function updateScrollDimming(): void {
+  const state = cameraRig.scrollState
+  scrollVelocityEMA = scrollVelocityEMA * 0.85 + state.velocity * 0.15
+  const norm = Math.min(
+    1,
+    Math.max(0, (scrollVelocityEMA - VELOCITY_DIM_THRESHOLD) / (VELOCITY_DIM_SOFT - VELOCITY_DIM_THRESHOLD)),
+  )
+  dimAmount += (norm - dimAmount) * 0.08
+
+  runway.renderer.toneMappingExposure = 1.15 - dimAmount * 0.55
+  if (postfx.effects.bloom) {
+    postfx.effects.bloom.intensity = 0.45 * (1 - dimAmount * 0.7)
+  }
+  if (postfx.effects.vignette) {
+    const baseDarkness = 0.55
+    postfx.effects.vignette.darkness = baseDarkness + dimAmount * 0.35
+  }
+  scrollResistance = 1 - norm * 0.85
+}
 let audienceFlashTimer = 0
 
 const FINALE_LINEUP_X = [-3.3, -1.1, 1.1, 3.3]
@@ -218,10 +357,21 @@ let transitionTl: gsap.core.Timeline | null = null
 let dissolveResetTimer: number | null = null
 let lastTransitionAt = 0
 let scrollLockProgress: number | null = null
-const RAPID_THRESHOLD_MS = 2200
+const RAPID_THRESHOLD_MS = 600
 
 function forceDissolveReset(): void {
   dissolveUniform.value = 0
+}
+
+function captureSceneFrame(): HTMLCanvasElement {
+  postfx.render(0)
+  const src = runway.renderer.domElement
+  const out = document.createElement('canvas')
+  out.width = src.width
+  out.height = src.height
+  const ctx = out.getContext('2d')
+  if (ctx) ctx.drawImage(src, 0, 0)
+  return out
 }
 
 function snapLookState(toIdx: number, look: (typeof LOOKS)[number], includeText = true): void {
@@ -287,50 +437,50 @@ function playLookTransition(toIdx: number): void {
     return
   }
 
+  const snapshot = captureSceneFrame()
+  const overlay = document.createElement('div')
+  overlay.className = 'crossfade-overlay'
+  overlay.style.opacity = '1'
+  overlay.appendChild(snapshot)
+  document.body.appendChild(overlay)
+
   scrollLockProgress = 1
+  lookUI.fadeOut()
+  pinLayer.setVisible(false)
+  displayedLookIdx = toIdx
+  snapLookState(toIdx, look, false)
+  lookUI.swapContent(toIdx, look)
+  const nextPins = LOOKS[toIdx].pins
+  const nextMannequin = mannequins[toIdx]
+  if (nextPins && nextMannequin) {
+    pinLayer.setPins(nextPins, nextMannequin.group)
+  } else {
+    pinLayer.clear()
+  }
+  audio.playFlash()
+  flashBloomReact()
+
   transitionTl = gsap
     .timeline({
       onComplete: () => {
-        forceDissolveReset()
+        overlay.remove()
         scrollLockProgress = null
       },
     })
-    .call(() => {
-      lookUI.fadeOut()
-      pinLayer.setVisible(false)
+    .to(overlay, {
+      opacity: 0,
+      duration: 0.7,
+      ease: 'power2.inOut',
     })
-    .to(dissolveUniform, { value: 1, duration: 0.85, ease: 'sine.inOut' }, 0)
-    .call(() => {
-      lookUI.triggerFlash()
-      audio.playFlash()
-      flashBloomReact()
-      runway.lights.flashLight.intensity = 7
-      displayedLookIdx = toIdx
-      snapLookState(toIdx, look, false)
-      lookUI.swapContent(toIdx, look)
-      const nextPins = LOOKS[toIdx].pins
-      const nextMannequin = mannequins[toIdx]
-      if (nextPins && nextMannequin) {
-        pinLayer.setPins(nextPins, nextMannequin.group)
-      } else {
-        pinLayer.clear()
-      }
-    })
-    .to(runway.lights.flashLight, {
-      intensity: 0,
-      duration: 0.6,
-      ease: 'sine.out',
-    })
-    .to(dissolveUniform, { value: 0, duration: 1.3, ease: 'sine.inOut' }, '+=0.35')
-    .call(() => lookUI.fadeIn(), [], '-=1.0')
-    .call(() => pinLayer.setVisible(true))
-    .call(() => creditsUI.showCartel(look))
-    .call(() => creditsUI.hideCartel(), [], '+=2.4')
+    .call(() => lookUI.fadeIn(), [], 0.25)
+    .call(() => pinLayer.setVisible(true), [], 0.55)
+    .call(() => creditsUI.showCartel(look), [], 0.7)
+    .call(() => creditsUI.hideCartel(), [], '+=1.6')
 
   dissolveResetTimer = window.setTimeout(() => {
     dissolveResetTimer = null
     forceDissolveReset()
-  }, 4500)
+  }, 1500)
 }
 
 const rimToCam = new Vector3()
@@ -604,6 +754,10 @@ function frame(): void {
   if (state.progress > 0.02) lookUI.hideScrollHint()
 
   audio.update(state.walkPhase)
+
+  applyDwellLock()
+  updateScrollDimming()
+  tryAutoSnap()
 
   if (finaleEngaged) {
     const blend = smoothstep(0, FINALE_SLIDE_END, state.finaleProgress)

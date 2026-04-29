@@ -45,7 +45,10 @@ const MAX_PROGRESS_PER_SECOND = 0.065
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t
 const clamp01 = (v: number): number => Math.max(0, Math.min(1, v))
 
-export function createCameraRig(reducedMotion = false): CameraRig {
+export function createCameraRig(
+  reducedMotion = false,
+  getResistance: () => number = () => 1,
+): CameraRig {
   const camera = new PerspectiveCamera(
     45,
     window.innerWidth / window.innerHeight,
@@ -112,7 +115,7 @@ export function createCameraRig(reducedMotion = false): CameraRig {
       },
     })
 
-    const MAX_AHEAD = 0.06
+    const MAX_AHEAD_BASE = 0.06
     let lastScrollClamp = 0
     window.addEventListener(
       'scroll',
@@ -123,7 +126,8 @@ export function createCameraRig(reducedMotion = false): CameraRig {
         if (!sc) return
         const total = sc.offsetHeight - window.innerHeight
         if (total <= 0) return
-        const desired = (scrollState.progress + MAX_AHEAD) * total
+        const allowed = MAX_AHEAD_BASE * Math.max(0.18, getResistance())
+        const desired = (scrollState.progress + allowed) * total
         if (window.scrollY > desired + 4) {
           lastScrollClamp = now
           window.scrollTo({ top: desired, behavior: 'auto' })
@@ -141,7 +145,7 @@ export function createCameraRig(reducedMotion = false): CameraRig {
     const dt = prevTime > 0 ? Math.min(time - prevTime, 0.1) : 1 / 60
     prevTime = time
 
-    const MAX_AHEAD = 0.06
+    const MAX_AHEAD = 0.06 * Math.max(0.18, getResistance())
     const prevProgress = scrollState.progress
     const ahead = scrollState.target - prevProgress
     if (ahead > MAX_AHEAD) {
