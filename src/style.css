@@ -30,7 +30,7 @@ a:focus-visible {
   box-shadow: 0 0 22px rgba(201, 185, 154, 0.9);
 }
 .pin:focus-visible .pin-card {
-  background: rgba(10, 10, 10, 0.5);
+  background: rgba(6, 6, 7, 0.92);
   outline: 1px solid var(--color-accent);
   outline-offset: 2px;
 }
@@ -58,9 +58,11 @@ body {
   overscroll-behavior: none;
 }
 
-body.no-scroll,
-html.no-scroll {
+html,
+body {
+  height: 100%;
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 body.in-finale .look-info,
@@ -117,12 +119,6 @@ body.in-finale .credits-cartel {
 
 canvas { display: block; }
 
-#scroll-container {
-  position: relative;
-  z-index: 0;
-  height: 800vh;
-  width: 100%;
-}
 
 .overlay {
   position: fixed;
@@ -622,6 +618,19 @@ canvas { display: block; }
   cursor: none;
   display: block;
 }
+/* Zone de survol continue entre le point et la carte : pas de clignotement en traversant l'écart */
+.pin::before {
+  content: '';
+  position: absolute;
+  top: -20px;
+  left: -12px;
+  width: 72px;
+  height: 44px;
+}
+.pin.flip::before {
+  left: auto;
+  right: -12px;
+}
 .pin-dot {
   width: 16px;
   height: 16px;
@@ -662,13 +671,15 @@ canvas { display: block; }
 }
 .pin-card {
   position: absolute;
-  top: -14px;
+  top: -16px;
   left: 52px;
-  padding: 12px 40px 12px 18px;
+  padding: 13px 42px 14px 20px;
   border-left: 1px solid var(--color-accent);
   white-space: nowrap;
-  backdrop-filter: blur(4px);
-  background: rgba(10, 10, 10, 0.45);
+  -webkit-backdrop-filter: blur(16px) saturate(0.55);
+  backdrop-filter: blur(16px) saturate(0.55);
+  background: linear-gradient(135deg, rgba(8, 8, 9, 0.86), rgba(8, 8, 9, 0.74));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(201, 185, 154, 0.14);
   transition: padding 0.35s cubic-bezier(0.16, 1, 0.3, 1),
     background-color 0.35s ease, max-width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   display: block;
@@ -695,33 +706,36 @@ canvas { display: block; }
   transform: rotate(45deg);
 }
 .pin:hover .pin-card {
-  background: rgba(10, 10, 10, 0.65);
+  background: rgba(6, 6, 7, 0.92);
 }
 .pin-label {
   font-family: var(--font-display);
-  font-weight: 300;
+  font-weight: 400;
   font-style: italic;
-  font-size: 1.15rem;
-  color: var(--color-text);
-  line-height: 1.15;
+  font-size: 1.35rem;
+  color: #fbf8f3;
+  line-height: 1.12;
+  letter-spacing: 0.005em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
   display: block;
 }
 .pin-detail {
   font-family: var(--font-body);
-  font-weight: 300;
-  font-size: 0.6rem;
-  letter-spacing: 0.32em;
+  font-weight: 400;
+  font-size: 0.68rem;
+  letter-spacing: 0.26em;
   text-transform: uppercase;
-  color: var(--color-accent);
-  margin-top: 8px;
+  color: #dfd2b3;
+  margin-top: 7px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
   display: block;
 }
 .pin-description {
   font-family: var(--font-body);
   font-weight: 300;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   line-height: 1.6;
-  color: rgba(232, 228, 223, 0.88);
+  color: rgba(242, 238, 232, 0.95);
   margin-top: 14px;
   display: block;
   white-space: normal;
@@ -734,13 +748,42 @@ canvas { display: block; }
     margin-top 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .pin.expanded .pin-card {
-  background: rgba(10, 10, 10, 0.78);
+  background: rgba(6, 6, 7, 0.94);
   padding: 16px 22px 20px 22px;
+}
+
+/* Carte basculée à gauche du point (ancre dans le tiers droit de l'écran) */
+.pin.flip .pin-card {
+  left: auto;
+  right: 52px;
+  border-left: none;
+  border-right: 1px solid var(--color-accent);
+  text-align: right;
+  padding: 13px 20px 14px 42px;
+}
+.pin.flip.expanded .pin-card {
+  padding: 16px 22px 20px 22px;
+}
+.pin.flip .pin-toggle {
+  right: auto;
+  left: 12px;
+}
+.pin.flip .pin-dot::before {
+  left: auto;
+  right: 100%;
+  background: linear-gradient(to left, rgba(201, 185, 154, 0.55), rgba(201, 185, 154, 0));
 }
 .pin.expanded .pin-description {
   max-width: 320px;
   max-height: 280px;
   opacity: 1;
+}
+/* Fermeture quasi instantanée : dès que le pointeur quitte le pin, rien ne traîne à l'écran */
+.pin:not(.expanded) .pin-description {
+  transition-duration: 0.12s, 0.12s, 0.12s, 0.12s;
+}
+.pin:not(.expanded) .pin-card {
+  transition-duration: 0.15s, 0.15s, 0.15s;
 }
 
 @media (pointer: coarse) {
@@ -752,32 +795,51 @@ canvas { display: block; }
     left: 16px;
     padding: 8px 10px;
   }
-  .pin-label { font-size: 0.8rem; }
-  .pin-detail { font-size: 0.5rem; letter-spacing: 0.25em; }
-  .pin.expanded .pin-description { max-width: 220px; font-size: 0.65rem; }
+  .pin.flip .pin-card {
+    right: 16px;
+    padding: 8px 10px;
+  }
+  .pin-label { font-size: 1rem; }
+  .pin-detail { font-size: 0.58rem; letter-spacing: 0.22em; }
+  .pin.expanded .pin-description { max-width: 220px; font-size: 0.7rem; }
 }
 
 .progress-bar {
   position: fixed;
   bottom: 0;
   left: 0;
+  width: 100vw;
   height: 2px;
   background: linear-gradient(to right, transparent 0%, var(--color-accent) 30%, var(--color-accent) 70%, transparent 100%);
   box-shadow: 0 0 14px rgba(201, 185, 154, 0.4);
   z-index: 20;
-  width: 0%;
-  transition: width 0.1s linear;
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  will-change: transform;
+  pointer-events: none;
 }
-.progress-bar::after {
-  content: '';
-  position: absolute;
-  right: -3px;
-  top: -2px;
+.progress-comet {
+  position: fixed;
+  bottom: -2px;
+  left: -3px;
   width: 6px;
   height: 6px;
   background: var(--color-accent);
   border-radius: 50%;
   box-shadow: 0 0 10px rgba(201, 185, 154, 0.9);
+  z-index: 21;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+  pointer-events: none;
+}
+.curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+  background: var(--color-bg);
+  opacity: 0;
+  will-change: opacity;
 }
 
 
@@ -1451,6 +1513,43 @@ a.finale-credit-meta:hover {
     display: none !important;
   }
 }
+/* Tablette détectée par script (iPad en mode « site de bureau » avec trackpad) */
+html.force-mobile .mobile-block {
+  display: flex;
+}
+html.force-mobile body > :not(.mobile-block) {
+  display: none !important;
+}
+
+/* Mode capture vidéo (classe posée par le script d'enregistrement) : on cache les commandes et le curseur */
+html.record .audio-toggle,
+html.record .lang-toggle,
+html.record .poster-hint,
+html.record .scroll-hint,
+html.record .cursor-ring,
+html.record .cursor-dot,
+html.record .stats-hud {
+  display: none !important;
+}
+
+/* HUD de test (?stats=1) : fps, DPR, palier, GPU */
+.stats-hud {
+  position: fixed;
+  top: 96px;
+  right: 40px;
+  z-index: 10001;
+  pointer-events: none;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 10px;
+  line-height: 1.5;
+  letter-spacing: 0.04em;
+  color: rgba(232, 228, 223, 0.85);
+  background: rgba(6, 6, 7, 0.7);
+  border: 1px solid rgba(201, 185, 154, 0.25);
+  padding: 6px 9px;
+  white-space: pre;
+  text-align: right;
+}
 .mobile-block-inner {
   max-width: 420px;
   text-align: center;
@@ -1519,4 +1618,24 @@ a.finale-credit-meta:hover {
 @keyframes mobileBlockIn {
   from { opacity: 0; transform: translateY(14px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+.letterbox {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 11vh;
+  background: #040404;
+  z-index: 8;
+  pointer-events: none;
+  transform: scaleY(0);
+  will-change: transform;
+}
+.letterbox--top {
+  top: 0;
+  transform-origin: 50% 0;
+}
+.letterbox--bottom {
+  bottom: 0;
+  transform-origin: 50% 100%;
 }

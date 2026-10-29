@@ -28,8 +28,41 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Outfit:wght@200;300;400&display=swap"
     />
-    <link rel="preload" as="fetch" href="/hdri/photo_studio_01_4k.exr" crossorigin="anonymous" />
-    <link rel="preload" as="fetch" href="/models/look1.glb" crossorigin="anonymous" />
+    <!--
+      Preloads injectés par script, pas en statique :
+      - un téléphone / tablette ne voit que le mur mobile, inutile de lui faire tirer 20 Mo ;
+      - WebKit n'associe pas un preload as="fetch" au fetch() de three.js et téléchargerait
+        tout deux fois (mesuré : look1.glb 15 Mo + HDR 4,6 Mo en double) ;
+      - une petite machine (tier low) n'utilise pas le HDR.
+    -->
+    <script>
+      ;(function () {
+        var ua = navigator.userAgent
+        // Téléphones et tablettes : mur mobile, sans exception. Un iPad avec clavier/trackpad se
+        // présente comme un Mac à pointeur fin (UA « Macintosh », pointer: fine) : on le repère
+        // à ses points de contact tactiles.
+        var tablet =
+          /iPad|iPhone|iPod|Android|Mobile/i.test(ua) ||
+          (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)
+        if (tablet) document.documentElement.classList.add('force-mobile')
+        var desktop =
+          !tablet && window.matchMedia('(min-width: 901px) and (pointer: fine)').matches
+        var webkit = /AppleWebKit/i.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR/i.test(ua)
+        if (!desktop || webkit) return
+        var cores = navigator.hardwareConcurrency || 4
+        var memory = navigator.deviceMemory || 8
+        var files = ['/models/look1.glb']
+        if (cores >= 4 && memory >= 4) files.push('/hdri/photo_studio_01_2k.exr')
+        files.forEach(function (href) {
+          var link = document.createElement('link')
+          link.rel = 'preload'
+          link.as = 'fetch'
+          link.href = href
+          link.crossOrigin = 'anonymous'
+          document.head.appendChild(link)
+        })
+      })()
+    </script>
   </head>
   <body>
     <div class="mobile-block" id="mobile-block" aria-hidden="true">
@@ -78,10 +111,10 @@
     <div class="cursor-dot" id="cursor-dot"></div>
 
     <div id="canvas-container"></div>
-    <div id="scroll-container"></div>
 
     <div class="flash" id="flash"></div>
     <div class="progress-bar" id="progress-bar"></div>
+    <div class="progress-comet" id="progress-comet"></div>
 
     <header class="overlay brand">
       <h1>Nøir Haus</h1>

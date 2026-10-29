@@ -7,3 +7,6 @@ dist
 .vite
 .vscode
 .idea
+
+# Exports vidéo (LinkedIn) : lourds, régénérables via scripts/record-video.cjs
+export/

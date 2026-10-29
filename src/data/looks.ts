@@ -4,6 +4,7 @@ export interface LookLighting {
   color: number
   accent: number
   spotColor: number
+  exposure?: number
 }
 
 export interface LookMaterial {
@@ -91,7 +92,7 @@ export const LOOKS: Look[] = [
           en: 'Jacquard woven on a traditional loom. Green-tea-dyed silk ground, "longevity" ideogram motifs re-embroidered in 24-karat gold thread.',
         },
         anchor: [0, 1.25, 0.22],
-        atProgress: 0.15,
+        atProgress: 0.14,
       },
       {
         label: { fr: '색동 · Saekdong', en: '색동 · Saekdong' },
@@ -104,7 +105,7 @@ export const LOOKS: Look[] = [
           en: 'The five pungsu colours — red, yellow, blue, white, black — laid in horizontal bands. A protective emblem worn by court children and queens at ceremony.',
         },
         anchor: [0.42, 1.05, 0.05],
-        atProgress: 0.4,
+        atProgress: 0.33,
       },
       {
         label: { fr: '흉배 · Rang royal', en: '흉배 · Royal rank' },
@@ -117,7 +118,7 @@ export const LOOKS: Look[] = [
           en: 'The embroidered 봉황흉배 rectangle marks the rank of queen. Twin male-female phoenix on a peony ground — the exact iconography of the ladies of Changdeokgung palace.',
         },
         anchor: [0, 1.2, -0.2],
-        atProgress: 0.65,
+        atProgress: 0.52,
       },
       {
         label: { fr: '홍치마 · Jupe rouge', en: '홍치마 · Red skirt' },
@@ -130,7 +131,7 @@ export const LOOKS: Look[] = [
           en: 'Five-layer satin underskirt. Hand-ground cochineal dye — the ceremonial red of the Joseon court, forbidden to commoners by royal edict.',
         },
         anchor: [0, 0.45, 0.25],
-        atProgress: 0.88,
+        atProgress: 0.69,
       },
     ],
     outfit: {
@@ -156,7 +157,7 @@ export const LOOKS: Look[] = [
       fr: 'Robe-fourreau en velours teint cinq fois. Le tissu absorbe la lumière, la dentelle la rend au décuple — travaillée en filigrane floral, posée en transparence sur un bustier baleiné. L’ourlet traîne, la coupe mord le corps.',
       en: 'Sheath dress in velvet dyed five times over. The fabric drinks light, the lace throws it back — filigreed in floral relief, laid over a boned bustier. The hem drags, the cut bites the body.',
     },
-    lighting: { color: 0x0a0a0d, accent: 0xc0bdc8, spotColor: 0xfafaff },
+    lighting: { color: 0x0a0a0d, accent: 0xc0bdc8, spotColor: 0xfafaff, exposure: 1.1 },
     model: 'look2.glb',
     pins: [
       {
@@ -166,16 +167,33 @@ export const LOOKS: Look[] = [
           en: 'Floral motif · fine mesh',
         },
         anchor: [0, 1.1, 0.18],
-        atProgress: 0.2,
+        atProgress: 0.18,
       },
       {
-        label: { fr: 'Escarpins open-toe', en: 'Open-toe pumps' },
+        label: { fr: 'Traîne', en: 'Train' },
         detail: {
-          fr: 'Cuir verni · talon 10 cm',
-          en: 'Patent leather · 10 cm heel',
+          fr: 'Dentelle sur velours · 60 cm au sol',
+          en: 'Lace over velvet · 60 cm on the floor',
         },
-        anchor: [0, 0.08, 0.15],
-        atProgress: 0.6,
+        description: {
+          fr: 'La dentelle déborde du velours et traîne derrière le pas. Rien ne la retient : la robe laisse une trace.',
+          en: 'The lace spills past the velvet and drags behind each step. Nothing holds it back: the dress leaves a trace.',
+        },
+        anchor: [-0.2, 0.12, -0.45],
+        atProgress: 0.48,
+      },
+      {
+        label: { fr: 'Bustier armé', en: 'Boned bustier' },
+        detail: {
+          fr: 'Baleines spirale · zip invisible au dos',
+          en: 'Spiral boning · invisible back zip',
+        },
+        description: {
+          fr: 'Douze baleines spiralées tiennent le velours contre le corps. Le zip est dans le dos, la face est d’un seul tenant.',
+          en: 'Twelve spiral bones hold the velvet against the body. The zip sits at the back; the front is one unbroken piece.',
+        },
+        anchor: [0.05, 1.3, 0.12],
+        atProgress: 0.66,
       },
     ],
     outfit: {
@@ -201,33 +219,46 @@ export const LOOKS: Look[] = [
       en: 'Deconstructed tailoring — utility cut, stacked cargo pockets, silver zips on display. Luxury disguised as field gear: contrast topstitching, tactical straps, nothing decorative. The frost lives in the precision, not the ornament.',
     },
     lighting: { color: 0x10131a, accent: 0xb8d4e8, spotColor: 0xeef4ff },
-    model: 'look3_naomi/E.gltf',
+    model: 'look3.glb',
     pins: [
       {
-        label: { fr: 'Snowflakes', en: 'Snowflakes' },
+        label: { fr: 'Poches cargo empilées', en: 'Stacked cargo pockets' },
         detail: {
-          fr: 'Broderie fil métallique',
-          en: 'Metallic thread embroidery',
+          fr: 'Zip argenté · rabat double',
+          en: 'Silver zip · double flap',
         },
         description: {
-          fr: 'Motif flocon répété sur dentelle ajourée. Fil argenté tissé main, ~280 points par flocon.',
-          en: 'Snowflake motif repeated on openwork lace. Hand-woven silver thread, ~280 stitches per flake.',
+          fr: 'Trois volumes superposés sur la poitrine, chacun fermé par un zip métal apparent. La fonction tient lieu de motif.',
+          en: 'Three stacked volumes on the chest, each closed by an exposed metal zip. Function stands in for pattern.',
         },
-        anchor: [0, 1.2, 0.2],
-        atProgress: 0.25,
+        anchor: [0.13, 1.05, 0.15],
+        atProgress: 0.21,
       },
       {
-        label: { fr: 'Bones', en: 'Bones' },
+        label: { fr: 'Manches froncées', en: 'Ruched sleeves' },
         detail: {
-          fr: 'Armature corset apparente',
-          en: 'Exposed corset boning',
+          fr: 'Coulisse serrée · coton écru',
+          en: 'Drawn cord · raw cotton',
         },
         description: {
-          fr: 'Baleines métalliques visibles sous la dentelle. Référence à la lingerie corsetterie 1890s, retournée comme un statement structurel.',
-          en: 'Metal boning visible under the lace. A nod to 1890s corsetry, flipped into a structural statement.',
+          fr: 'Coulisses tirées sur toute la longueur du bras, le volume tenu par la tension du cordon. Le givre est dans la précision du pli.',
+          en: 'Drawcords pulled along the full length of the arm, the volume held by the tension of the cord. The frost lives in the precision of the fold.',
         },
-        anchor: [0.35, 0.95, 0.05],
-        atProgress: 0.6,
+        anchor: [0.36, 1.12, 0.02],
+        atProgress: 0.48,
+      },
+      {
+        label: { fr: 'Zips de genou', en: 'Knee zips' },
+        detail: {
+          fr: 'Ouverture latérale · twill denim brut',
+          en: 'Side opening · raw denim twill',
+        },
+        description: {
+          fr: 'Deux glissières symétriques ouvrent le pantalon à mi-jambe. Le denim n’est pas lavé : il marquera chaque pli de celle qui le porte.',
+          en: 'Two symmetrical zips open the trouser at mid-leg. The denim is unwashed: it will record every crease of its wearer.',
+        },
+        anchor: [0.1, 0.3, 0.08],
+        atProgress: 0.66,
       },
     ],
     outfit: {
@@ -246,15 +277,15 @@ export const LOOKS: Look[] = [
     id: 'clown',
     name: { fr: 'Clown', en: 'Clown' },
     fabric: {
-      fr: 'Dentelle translucide cousue main · Coupe tailleur stricte · Finitions métal',
-      en: 'Hand-stitched translucent lace · Strict tailoring · Metal hardware',
+      fr: 'Dentelle translucide cousue main · Coupe tailleur stricte · Fraise et flocons appliqués',
+      en: 'Hand-stitched translucent lace · Strict tailoring · Ruff and snowflake appliqués',
     },
     desc: {
       fr: 'Veste structurée et pantalon taille haute, intégralement en dentelle. Rien à cacher, rien à offrir — la transparence comme armure. Les coutures suivent la coupe d’un costume masculin classique, la matière en démonte toute l’autorité.',
       en: 'Structured jacket and high-waisted trousers, wholly in lace. Nothing to hide, nothing to offer — transparency as armour. The seams follow the cut of a classic men’s suit, while the fabric dismantles its authority.',
     },
-    lighting: { color: 0x120a14, accent: 0xe8a8c4, spotColor: 0xfff4fa },
-    model: 'clown_v2/e.gltf',
+    lighting: { color: 0x120a14, accent: 0xe8a8c4, spotColor: 0xfff4fa, exposure: 0.5 },
+    model: 'look4.glb',
     pins: [
       {
         label: { fr: 'Dentelle', en: 'Lace' },
@@ -270,29 +301,29 @@ export const LOOKS: Look[] = [
         atProgress: 0.25,
       },
       {
-        label: { fr: 'Tailleur', en: 'Tailoring' },
+        label: { fr: 'Fraise', en: 'Ruff' },
         detail: {
-          fr: 'Épaule structurée, revers cran italien',
-          en: 'Structured shoulder, Italian peak lapel',
+          fr: 'Col plissé en dentelle rigidifiée',
+          en: 'Pleated collar in stiffened lace',
         },
         description: {
-          fr: 'La coupe suit un smoking masculin strict — toile thermocollée dans le haut, padding minimaliste, revers à cran droit haut. La dentelle prend ainsi la tension d’une armure, pas d’une lingerie.',
-          en: 'The cut follows a strict men’s tuxedo — fused canvas in the chest, minimal padding, high peak lapel. The lace takes on the tension of armour, not lingerie.',
+          fr: 'Collerette élisabéthaine montée sur tulle amidonné. Le costume masculin se referme sur un col de cour.',
+          en: 'An Elizabethan ruff set on starched tulle. The men’s suit closes on a court collar.',
         },
-        anchor: [0.28, 1.52, 0.05],
+        anchor: [-0.2, 1.4, 0.15],
         atProgress: 0.55,
       },
       {
-        label: { fr: 'Finitions métal', en: 'Metal hardware' },
+        label: { fr: 'Flocons', en: 'Snowflakes' },
         detail: {
-          fr: 'Boutonnière chainette argent massif',
-          en: 'Buttonhole with solid silver chain',
+          fr: 'Appliqués dentelle découpés main',
+          en: 'Hand-cut lace appliqués',
         },
         description: {
-          fr: 'Chaînette et boutons en argent brossé, cousus main sur la fermeture. Le reflet métallique contre la transparence signe la pièce — un contraste d’armature.',
-          en: 'Brushed silver chain and buttons, hand-stitched along the closure. Metal reflection against transparency is the piece’s signature — a contrast of framework.',
+          fr: 'Cristaux de dentelle cousus un à un sur la poitrine, l’épaule et le genou. La seule chose qui tombe de ce costume, c’est la neige.',
+          en: 'Lace crystals stitched one by one on chest, shoulder and knee. The only thing that falls from this suit is snow.',
         },
-        anchor: [-0.08, 1.15, 0.16],
+        anchor: [-0.1, 1.06, 0.18],
         atProgress: 0.8,
       },
     ],

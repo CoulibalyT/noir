@@ -13,7 +13,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           three: ['three'],
-          gsap: ['gsap', 'gsap/ScrollTrigger'],
+          gsap: ['gsap'],
           postprocessing: ['postprocessing'],
         },
       },

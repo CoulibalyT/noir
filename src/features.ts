@@ -1,5 +1,4 @@
-
-
+import { IMMERSION, type ImmersionKey } from './config'
 const params = new URLSearchParams(window.location.search)
 const offList = (params.get('off') ?? '').split(',').filter(Boolean)
 const onList = (params.get('on') ?? '').split(',').filter(Boolean)
@@ -24,6 +23,17 @@ export type FeatureKey =
   | 'grade'
   | 'truss'
   | 'stars'
+  | 'smaa'
+  | 'adaptive'
+  | 'gaze'
+  | 'dof'
+  | 'soundscape'
+  | 'music'
+  | 'opening'
+  | 'parallax'
+  | 'flashwall'
+  | 'speedfx'
+  | 'letterbox'
 
 export function feature(key: FeatureKey, defaultValue = true): boolean {
   if (only !== null) return key === only
@@ -53,9 +63,23 @@ const allKeys: FeatureKey[] = [
   'grade',
   'truss',
   'stars',
+  'smaa',
+  'adaptive',
+  'gaze',
+  'dof',
+  'soundscape',
+  'music',
+  'opening',
+  'parallax',
+  'flashwall',
+  'speedfx',
+  'letterbox',
 ]
+const defaultFor = (k: FeatureKey): boolean =>
+  k in IMMERSION ? IMMERSION[k as ImmersionKey] : !offByDefault.has(k)
+
 const summary = allKeys
-  .map((k) => `${k}=${feature(k, !offByDefault.has(k)) ? 'on' : 'off'}`)
+  .map((k) => `${k}=${feature(k, defaultFor(k)) ? 'on' : 'off'}`)
   .join(' ')
 
 console.log('[features]', summary)

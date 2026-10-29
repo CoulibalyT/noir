@@ -44,6 +44,8 @@ export function createLookUI(i18n: I18n): LookUI {
   const lookInfoEl = document.getElementById('look-info') as HTMLElement
   const flashEl = document.getElementById('flash') as HTMLElement
   const progressBarEl = document.getElementById('progress-bar') as HTMLElement
+  const progressCometEl = document.getElementById('progress-comet') as HTMLElement | null
+  let lastProgressQ = -1
   const scrollHintEl = document.getElementById('scroll-hint') as HTMLElement
 
   let flashTimeoutId: number | null = null
@@ -99,7 +101,13 @@ export function createLookUI(i18n: I18n): LookUI {
   }
 
   const setProgress = (progress: number): void => {
-    progressBarEl.style.width = `${progress * 100}%`
+    const q = Math.round(progress * 2000) / 2000
+    if (q === lastProgressQ) return
+    lastProgressQ = q
+    progressBarEl.style.transform = `scaleX(${q})`
+    if (progressCometEl) {
+      progressCometEl.style.transform = `translate3d(${q * 100}vw, 0, 0)`
+    }
   }
 
   const hideScrollHint = (): void => {

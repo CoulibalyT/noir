@@ -10,10 +10,25 @@ interface PinHandle {
   anchorWorld: Vector3
   ndc: Vector3
   expanded: boolean
+  flipped: boolean
 }
 
-const PEAK_HALF_WIDTH = 0.18
-const FADE_HALF_WIDTH = 0.28
+// Fenêtre de visibilité alignée sur le zoom caméra (plateau 0.06 + rampe 0.1) :
+// une carte n'est pleine que quand la caméra est réellement sur son ancre,
+// et deux pins voisins (espacés de ~0.19) ne se superposent plus.
+const PEAK_HALF_WIDTH = 0.07
+const FADE_HALF_WIDTH = 0.14
+// Au-delà de cette fraction de la largeur, la carte bascule à gauche du point
+// pour ne jamais sortir de l'écran.
+const FLIP_AT = 0.6
+
+// Modèle d'interaction strictement différent selon l'appareil :
+// - pointeur fin + survol (desktop) : la description s'ouvre au survol du point ou de la
+//   carte et se referme dès que la souris en sort — rien ne reste collé à l'écran ;
+// - tactile : un tap ouvre/ferme, un tap ailleurs ou un début de scroll referme.
+const HOVER_CAPABLE =
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(hover: hover) and (pointer: fine)').matches
 
 function triangleFade(localProgress: number, atProgress: number): number {
   const d = Math.abs(localProgress - atProgress)
@@ -97,16 +112,48 @@ export function createPinLayer(container: HTMLElement, i18n: I18n): PinLayer {
       anchorWorld: new Vector3(),
       ndc: new Vector3(),
       expanded: false,
+      flipped: false,
     }
 
-    wrapper.addEventListener('click', (e) => {
-      e.stopPropagation()
-      handle.expanded = !handle.expanded
-      wrapper.classList.toggle('expanded', handle.expanded)
-    })
+    if (HOVER_CAPABLE) {
+      wrapper.addEventListener('mouseenter', () => setExpanded(handle, true))
+      wrapper.addEventListener('mouseleave', () => setExpanded(handle, false))
+      wrapper.addEventListener('focus', () => setExpanded(handle, true))
+      wrapper.addEventListener('blur', () => setExpanded(handle, false))
+      // Le clic ne verrouille rien : seul le survol décide, pour que rien ne reste affiché.
+      wrapper.addEventListener('click', (e) => e.stopPropagation())
+    } else {
+      wrapper.addEventListener('click', (e) => {
+        e.stopPropagation()
+        const next = !handle.expanded
+        collapseAll()
+        setExpanded(handle, next)
+      })
+    }
 
     root.appendChild(wrapper)
     return handle
+  }
+
+  const setExpanded = (handle: PinHandle, value: boolean): void => {
+    if (handle.expanded === value) return
+    handle.expanded = value
+    handle.root.classList.toggle('expanded', value)
+  }
+
+  const collapseAll = (): void => {
+    for (const p of active) setExpanded(p, false)
+  }
+
+  // Tactile : un tap hors des pins ou un début de scroll referme la description ouverte.
+  const onOutsidePointer = (e: Event): void => {
+    const target = e.target as Element | null
+    if (target && target.closest('.pin')) return
+    collapseAll()
+  }
+  if (!HOVER_CAPABLE) {
+    document.addEventListener('pointerdown', onOutsidePointer, { passive: true })
+    window.addEventListener('touchmove', collapseAll, { passive: true })
   }
 
   const clear = () => {
@@ -122,6 +169,8 @@ export function createPinLayer(container: HTMLElement, i18n: I18n): PinLayer {
   const update = (camera: PerspectiveCamera, localProgress: number) => {
     const w = window.innerWidth
     const h = window.innerHeight
+    let lastHost: Object3D | null = null
+    camera.updateMatrixWorld()
 
     for (const p of active) {
       const opacity = triangleFade(localProgress, p.data.atProgress)
@@ -129,15 +178,20 @@ export function createPinLayer(container: HTMLElement, i18n: I18n): PinLayer {
       if (opacity <= 0) {
         p.root.style.opacity = '0'
         p.root.style.pointerEvents = 'none'
-        if (p.expanded) {
-          p.expanded = false
-          p.root.classList.remove('expanded')
-        }
+        setExpanded(p, false)
         continue
       }
 
       p.anchorWorld.set(p.data.anchor[0], p.data.anchor[1], p.data.anchor[2])
-      p.host.updateMatrixWorld()
+      if (lastHost !== p.host) {
+        lastHost = p.host
+        p.host.updateMatrix()
+        if (p.host.parent) {
+          p.host.matrixWorld.multiplyMatrices(p.host.parent.matrixWorld, p.host.matrix)
+        } else {
+          p.host.matrixWorld.copy(p.host.matrix)
+        }
+      }
       p.anchorWorld.applyMatrix4(p.host.matrixWorld)
       p.ndc.copy(p.anchorWorld).project(camera)
 
@@ -152,6 +206,11 @@ export function createPinLayer(container: HTMLElement, i18n: I18n): PinLayer {
 
       const sx = ((p.ndc.x + 1) / 2) * w
       const sy = ((1 - p.ndc.y) / 2) * h
+      const flip = sx > w * FLIP_AT
+      if (flip !== p.flipped) {
+        p.flipped = flip
+        p.root.classList.toggle('flip', flip)
+      }
       p.root.style.transform = `translate3d(${sx}px, ${sy}px, 0)`
       p.root.style.opacity = String(opacity)
       p.root.style.pointerEvents = opacity > 0.6 ? 'auto' : 'none'
@@ -160,6 +219,10 @@ export function createPinLayer(container: HTMLElement, i18n: I18n): PinLayer {
 
   const dispose = () => {
     clear()
+    if (!HOVER_CAPABLE) {
+      document.removeEventListener('pointerdown', onOutsidePointer)
+      window.removeEventListener('touchmove', collapseAll)
+    }
     root.remove()
   }
 

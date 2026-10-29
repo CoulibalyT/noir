@@ -9,11 +9,12 @@ import {
   Mesh,
   MeshPhysicalMaterial,
   MeshStandardMaterial,
+  Quaternion,
   Scene,
   SphereGeometry,
   Vector3,
 } from 'three'
-import type { Material } from 'three'
+import type { Bone, Material } from 'three'
 import type { AnimationClip, Object3D } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
@@ -34,6 +35,41 @@ export interface MannequinParts {
   rightKnee: Group
 }
 
+export interface MannequinRig {
+  head: Bone
+  neck: Bone | null
+  chest: Bone | null
+  spine: Bone | null
+  pelvis: Bone | null
+  headRest: Quaternion
+  neckRest: Quaternion
+  chestRest: Quaternion
+  spineRest: Quaternion
+  pelvisRest: Quaternion
+  pelvisRestPos: Vector3
+  /**
+   * Faux si le vêtement est un maillage statique (export CLO non skinné) : dans ce cas
+   * seul le regard (tête + cou) est animé. Respiration et report de poids déplaceraient
+   * le corps à l'intérieur d'une robe figée et la peau ressortirait à travers le tissu.
+   */
+  bodyMotion: boolean
+}
+
+const STATIC_GARMENT_MIN_TRIS = 2000
+
+function hasStaticGarment(root: Object3D): boolean {
+  let found = false
+  root.traverse((obj) => {
+    if (found) return
+    const mesh = obj as Mesh
+    if (!mesh.isMesh || (mesh as unknown as { isSkinnedMesh?: boolean }).isSkinnedMesh) return
+    const geo = mesh.geometry
+    const tris = (geo.index ? geo.index.count : geo.attributes.position?.count ?? 0) / 3
+    if (tris >= STATIC_GARMENT_MIN_TRIS) found = true
+  })
+  return found
+}
+
 export interface MannequinEntry {
   group: Group
   startZ: number
@@ -44,6 +80,35 @@ export interface MannequinEntry {
   walkLoopStart: number
   walkLoopDuration: number
   isGltf: boolean
+  rig: MannequinRig | null
+}
+
+function extractRig(root: Object3D): MannequinRig | null {
+  const byName = new Map<string, Bone>()
+  root.traverse((obj) => {
+    const bone = obj as Bone
+    if (bone.isBone) byName.set(bone.name, bone)
+  })
+  const head = byName.get('Head')
+  if (!head) return null
+  const neck = byName.get('Neck1') ?? byName.get('Neck') ?? null
+  const chest = byName.get('Spine3') ?? byName.get('Spine2') ?? null
+  const spine = byName.get('Spine1') ?? byName.get('Spine') ?? null
+  const pelvis = byName.get('Pelvis') ?? null
+  return {
+    head,
+    neck,
+    chest,
+    spine,
+    pelvis,
+    headRest: head.quaternion.clone(),
+    neckRest: neck ? neck.quaternion.clone() : new Quaternion(),
+    chestRest: chest ? chest.quaternion.clone() : new Quaternion(),
+    spineRest: spine ? spine.quaternion.clone() : new Quaternion(),
+    pelvisRest: pelvis ? pelvis.quaternion.clone() : new Quaternion(),
+    pelvisRestPos: pelvis ? pelvis.position.clone() : new Vector3(),
+    bodyMotion: !hasStaticGarment(root),
+  }
 }
 
 function createProceduralMannequin(outfit: OutfitDefinition): {
@@ -377,6 +442,11 @@ function tuneCloMaterials(root: Object3D): void {
     roughness?: number
     metalness?: number
     clearcoat?: number
+    doubleSided?: boolean
+    specularIntensity?: number
+    colorMul?: number
+    minOpacity?: number
+    solid?: boolean
   }> = [
 
     { test: /plastic|patent|PU|cuir.verni/i, envMapIntensity: 2.0, roughnessMul: 0.5, metalness: 0 },
@@ -385,13 +455,21 @@ function tuneCloMaterials(root: Object3D): void {
 
     { test: /silk|soie|brocart|치마|원삼|색동|흉배|한삼|띠/i, envMapIntensity: 1.2, roughnessMul: 0.9, metalness: 0 },
 
-    { test: /lace|dentelle|organza|tulle/i, envMapIntensity: 1.0, roughnessMul: 1.0, metalness: 0 },
+    // Les dentelles CLO sont souvent exportées en BLEND à 30 % sans canal alpha (nappe uniforme) :
+    // on remonte l'opacité pour que la peau ne transparaisse pas aux fentes, et on mate la surface
+    // (roughness 0.3 exporté → ~0.55) pour éviter l'effet film plastique. Une dentelle déjà à
+    // roughness 1 ou opacité 1 (look 04) n'est pas touchée.
+    { test: /lace|dentelle|organza|tulle/i, envMapIntensity: 0.6, roughnessMul: 1.8, metalness: 0, minOpacity: 0.97 },
+
+    // CLO exporte parfois un velours de jupe en BLEND 48 % (couche "Copy") : on le rend opaque
+    // pour que la peau ne transparaisse pas. Les couches à opacité 0 (doublures cachées) restent cachées.
+    { test: /velvet|velours|^fabric\b/i, envMapIntensity: 0.35, metalness: 0, solid: true },
 
     { test: /wool|laine|cotton|coton|tweed|mohair|cashmere|cachemire/i, envMapIntensity: 0.4, metalness: 0 },
 
-    { test: /skin|face|body|arm|leg|mara/i, envMapIntensity: 0.5, clearcoat: 0.2 },
+    { test: /skin|face|body|arm|leg|mara/i, envMapIntensity: 0.4, clearcoat: 0, specularIntensity: 0.18, roughness: 0.62, colorMul: 0.86 },
 
-    { test: /hair|cheveux|wig/i, envMapIntensity: 0.25, roughness: 0.82, metalness: 0 },
+    { test: /hair|cheveux|wig/i, envMapIntensity: 0.25, roughness: 0.82, metalness: 0, doubleSided: true },
 
     { test: /metal|gold|silver|buckle/i, envMapIntensity: 1.5, metalness: 1 },
   ]
@@ -427,6 +505,19 @@ function tuneCloMaterials(root: Object3D): void {
       if (rule.metalness !== undefined) pbr.metalness = rule.metalness
       if (rule.clearcoat !== undefined && 'clearcoat' in pbr) {
         pbr.clearcoat = rule.clearcoat
+      }
+      if (rule.doubleSided) pbr.side = DoubleSide
+      if (rule.specularIntensity !== undefined && 'specularIntensity' in pbr) {
+        ;(pbr as unknown as { specularIntensity: number }).specularIntensity = rule.specularIntensity
+      }
+      if (rule.colorMul !== undefined) pbr.color.multiplyScalar(rule.colorMul)
+      if (rule.minOpacity !== undefined && pbr.transparent && pbr.opacity < rule.minOpacity) {
+        pbr.opacity = rule.minOpacity
+      }
+      if (rule.solid && pbr.transparent && pbr.opacity > 0.05) {
+        pbr.opacity = 1
+        pbr.transparent = false
+        pbr.depthWrite = true
       }
 
       if (
@@ -470,13 +561,6 @@ async function tryLoadGltf(
   walkLoopStart: number
   walkLoopDuration: number
 } | null> {
-  try {
-    const head = await fetch(url, { method: 'HEAD' })
-    if (!head.ok) return null
-  } catch {
-    return null
-  }
-
   return new Promise((resolve) => {
     loader.load(
       url,
@@ -548,9 +632,8 @@ export async function buildMannequins(
 ): Promise<MannequinEntry[]> {
   const loader = new GLTFLoader()
   loader.setMeshoptDecoder(MeshoptDecoder)
-  const entries: MannequinEntry[] = []
 
-  for (let i = 0; i < looks.length; i++) {
+  const buildEntry = async (i: number): Promise<MannequinEntry> => {
     const look = looks[i]
     const startZ = subjectZForLook(i)
     let group: Group
@@ -560,6 +643,7 @@ export async function buildMannequins(
     let walkLoopStart = 0
     let walkLoopDuration = 1
     let isGltf = false
+    let rig: MannequinRig | null = null
 
     const gltf = look.model
       ? await tryLoadGltf(loader, `${modelsBaseUrl}/${look.model}`)
@@ -572,6 +656,7 @@ export async function buildMannequins(
       walkLoopStart = gltf.walkLoopStart
       walkLoopDuration = gltf.walkLoopDuration
       isGltf = true
+      rig = extractRig(group)
 
       const targetHeight = look.modelHeight ?? 1.8
       fitToHeight(group, targetHeight)
@@ -605,7 +690,7 @@ export async function buildMannequins(
     group.visible = i === 0
     scene.add(group)
 
-    entries.push({
+    return {
       group,
       startZ,
       look,
@@ -615,10 +700,14 @@ export async function buildMannequins(
       walkLoopStart,
       walkLoopDuration,
       isGltf,
-    })
+      rig,
+    }
   }
 
-  return entries
+  if (looks.length === 0) return []
+  const first = await buildEntry(0)
+  const rest = await Promise.all(looks.slice(1).map((_, k) => buildEntry(k + 1)))
+  return [first, ...rest]
 }
 
 export function animateProceduralWalk(parts: MannequinParts, phase: number): void {

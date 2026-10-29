@@ -1,15 +1,20 @@
-import { Color, HalfFloatType, Uniform, Vector2 } from 'three'
+import { Color, HalfFloatType, RGBADepthPacking, Uniform, Vector2 } from 'three'
 import type { PerspectiveCamera, Scene, WebGLRenderer } from 'three'
 import {
   BloomEffect,
   BlendFunction,
   ChromaticAberrationEffect,
   DepthOfFieldEffect,
+  DepthPass,
+  EdgeDetectionMode,
   Effect,
+  EffectAttribute,
   EffectComposer,
   EffectPass,
   NoiseEffect,
   RenderPass,
+  SMAAEffect,
+  SMAAPreset,
   VignetteEffect,
 } from 'postprocessing'
 import { AnamorphicPass } from './anamorphic'
@@ -104,14 +109,61 @@ export class ColorGradeEffect extends Effect {
   }
 }
 
+const RADIAL_FRAGMENT = `
+  uniform float uAmount;
+
+  void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+    if (uAmount < 0.001) {
+      outputColor = inputColor;
+      return;
+    }
+    vec2 dir = uv - vec2(0.5);
+    vec4 sum = inputColor;
+    float wsum = 1.0;
+    for (int i = 1; i <= 6; i++) {
+      float t = float(i) / 6.0;
+      float w = 1.0 - t * 0.6;
+      sum += texture2D(inputBuffer, uv - dir * t * uAmount * 0.12) * w;
+      wsum += w;
+    }
+    outputColor = sum / wsum;
+  }
+`
+
+export class RadialBlurEffect extends Effect {
+  constructor() {
+    super('RadialBlurEffect', RADIAL_FRAGMENT, {
+      blendFunction: BlendFunction.NORMAL,
+      attributes: EffectAttribute.CONVOLUTION,
+      uniforms: new Map<string, Uniform<number>>([['uAmount', new Uniform(0)]]),
+    })
+  }
+
+  get amount(): Uniform<number> {
+    return this.uniforms.get('uAmount') as Uniform<number>
+  }
+}
+
+class ColorSmaaEffect extends SMAAEffect {
+  constructor() {
+    super({
+      preset: SMAAPreset.HIGH,
+      edgeDetectionMode: EdgeDetectionMode.COLOR,
+    })
+    this.setAttributes(this.getAttributes() & ~EffectAttribute.DEPTH)
+  }
+}
+
 export interface PostFXOptions {
   bloom?: boolean
   chromatic?: boolean
   vignette?: boolean
   noise?: boolean
-  dof?: boolean
+  smaa?: boolean
   anamorphic?: boolean
   colorGrade?: boolean
+  dof?: boolean
+  radial?: boolean
 }
 
 export interface PostFX {
@@ -119,15 +171,18 @@ export interface PostFX {
   composer: EffectComposer
   render: (delta: number) => void
   setSize: (w: number, h: number) => void
+  setDof: (amount: number, focusDistance: number) => void
+  setSpeed: (amount: number) => void
   effects: {
     bloom: BloomEffect
     chromatic: ChromaticAberrationEffect
-    dof: DepthOfFieldEffect
     vignette: VignetteEffect
     noise: NoiseEffect
-
+    smaa: SMAAEffect | null
     anamorphic: AnamorphicPass | null
     colorGrade: ColorGradeEffect
+    dof: DepthOfFieldEffect | null
+    radial: RadialBlurEffect | null
   }
   dispose: () => void
 }
@@ -142,30 +197,59 @@ export function createPostFX(
   const enableChromatic = options.chromatic ?? true
   const enableVignette = options.vignette ?? true
   const enableNoise = options.noise ?? true
-  const enableDof = options.dof ?? false
+  const enableSmaa = options.smaa ?? true
   const enableAnamorphic = options.anamorphic ?? true
   const enableColorGrade = options.colorGrade ?? true
+  const enableDof = options.dof ?? true
+  const enableRadial = options.radial ?? true
   const composer = new EffectComposer(renderer, { frameBufferType: HalfFloatType })
   composer.addPass(new RenderPass(scene, camera))
+
+  let depthPass: DepthPass | null = null
+  let dof: DepthOfFieldEffect | null = null
+  let dofPass: EffectPass | null = null
+  if (enableDof) {
+    depthPass = new DepthPass(scene, camera, { resolutionScale: 0.5 })
+    depthPass.enabled = false
+    composer.addPass(depthPass)
+    dof = new DepthOfFieldEffect(camera, {
+      worldFocusDistance: 1.2,
+      worldFocusRange: 0.45,
+      bokehScale: 2.5,
+      resolutionScale: 0.5,
+    })
+    dofPass = new EffectPass(camera, dof)
+    dofPass.setDepthTexture(depthPass.texture, RGBADepthPacking)
+    dofPass.needsDepthTexture = false
+    dofPass.enabled = false
+  }
+
+  const smaa = enableSmaa ? new ColorSmaaEffect() : null
+  if (smaa) composer.addPass(new EffectPass(camera, smaa))
+  if (dofPass) composer.addPass(dofPass)
+
+  let radial: RadialBlurEffect | null = null
+  let radialPass: EffectPass | null = null
+  if (enableRadial) {
+    radial = new RadialBlurEffect()
+    radialPass = new EffectPass(camera, radial)
+    radialPass.enabled = false
+    composer.addPass(radialPass)
+  }
 
   const bloom = new BloomEffect({
     intensity: 0.45,
     luminanceThreshold: 0.82,
     luminanceSmoothing: 0.22,
-    mipmapBlur: false,
-    radius: 0.75,
+    mipmapBlur: true,
+    radius: 0.7,
+    levels: 7,
   })
 
   const chromatic = new ChromaticAberrationEffect({
     offset: new Vector2(0.0007, 0.0007),
     radialModulation: true,
     modulationOffset: 0.2,
-  })
-
-  const dof = new DepthOfFieldEffect(camera, {
-    focusDistance: 0.12,
-    focalLength: 0.02,
-    bokehScale: 0,
   })
 
   const vignette = new VignetteEffect({
@@ -180,8 +264,7 @@ export function createPostFX(
   noise.blendMode.opacity.value = 0.06
 
   const colorGrade = new ColorGradeEffect()
-
-  if (enableDof) composer.addPass(new EffectPass(camera, dof))
+  const dissolve = new DissolveEffect()
 
   const anamorphic = enableBloom && enableAnamorphic ? new AnamorphicPass() : null
   if (anamorphic) composer.addPass(anamorphic)
@@ -192,13 +275,9 @@ export function createPostFX(
     enableColorGrade ? colorGrade : null,
     enableVignette ? vignette : null,
     enableNoise ? noise : null,
+    dissolve,
   ].filter(Boolean) as Effect[]
-  if (chainEffects.length > 0) {
-    composer.addPass(new EffectPass(camera, ...chainEffects))
-  }
-
-  const dissolve = new DissolveEffect()
-  composer.addPass(new EffectPass(camera, dissolve))
+  composer.addPass(new EffectPass(camera, ...chainEffects))
 
   const setSize = (w: number, h: number): void => {
     composer.setSize(w, h)
@@ -208,11 +287,25 @@ export function createPostFX(
     composer.render(delta)
   }
 
-  const onResize = () => setSize(window.innerWidth, window.innerHeight)
-  window.addEventListener('resize', onResize)
+  const setDof = (amount: number, focusDistance: number): void => {
+    if (!dof || !dofPass || !depthPass) return
+    const on = amount > 0.02
+    dofPass.enabled = on
+    depthPass.enabled = on
+    if (!on) return
+    dof.cocMaterial.worldFocusDistance = Math.max(0.2, focusDistance)
+    dof.cocMaterial.worldFocusRange = 0.6 + (1 - amount) * 0.6
+    dof.bokehScale = 0.5 + amount * 1.5
+  }
+
+  const setSpeed = (amount: number): void => {
+    if (!radial || !radialPass) return
+    const on = amount > 0.01
+    radialPass.enabled = on
+    radial.amount.value = on ? Math.min(1, amount) : 0
+  }
 
   const dispose = (): void => {
-    window.removeEventListener('resize', onResize)
     composer.dispose()
   }
 
@@ -220,7 +313,9 @@ export function createPostFX(
     composer,
     render,
     setSize,
-    effects: { bloom, chromatic, dof, vignette, noise, anamorphic, colorGrade },
+    setDof,
+    setSpeed,
+    effects: { bloom, chromatic, vignette, noise, smaa, anamorphic, colorGrade, dof, radial },
     dissolve,
     dispose,
   }

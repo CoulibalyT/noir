@@ -35,6 +35,7 @@ export function createCreditsUI(i18n: I18n): CreditsUI {
   const cartelLinkEl = document.getElementById('credits-cartel-link') as HTMLAnchorElement
 
   let currentMarqueeId = ''
+  let lastMarqueeX = Number.NaN
 
   const setMarqueeContent = (look: Look): void => {
     const c = creditsMap[look.id]
@@ -58,7 +59,9 @@ export function createCreditsUI(i18n: I18n): CreditsUI {
       currentMarqueeId = look.id
     }
 
-    const x = 50 - localProgress * 180
+    const x = Math.round((50 - localProgress * 180) * 50) / 50
+    if (x === lastMarqueeX) return
+    lastMarqueeX = x
     marqueeEl.style.setProperty('--marquee-x', `${x}vw`)
   }
 
